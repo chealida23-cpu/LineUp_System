@@ -1,0 +1,725 @@
+{% extends "base.html" %}
+
+{% block title %}LineUp - កាតជួរឌីជីថល (Customer Ticket){% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto w-full px-4 py-6 flex-1 flex flex-col justify-center">
+
+    <!-- View 1: Form to Generate Ticket (Visible when no ticket active) -->
+    <div id="section-generate-ticket" class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl shadow-indigo-950/40">
+        <div class="text-center mb-6">
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 mb-3">
+                <i class="fa-solid fa-qrcode mr-1.5"></i> Smart Virtual Queue
+            </span>
+            <h1 class="text-2xl font-black text-white tracking-tight">យកលេខសំបុត្រឌីជីថល</h1>
+            <p class="text-xs text-slate-400 mt-1">Get your digital queue ticket & wait comfortably anywhere</p>
+        </div>
+
+        <!-- Validation Error Alert Banner -->
+        <div id="ticket-form-error" class="hidden mb-4 p-3 rounded-2xl bg-rose-950/80 border border-rose-800 text-rose-300 text-xs font-bold flex items-center space-x-2 animate-shake">
+            <i class="fa-solid fa-circle-exclamation text-base flex-shrink-0"></i>
+            <span id="ticket-form-error-msg">សូមបំពេញព័ត៌មានដែលចាំបាច់ទាំងអស់!</span>
+        </div>
+
+        <form id="form-ticket" class="space-y-4">
+            <!-- Service Selector -->
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                    ជ្រើសរើសសេវាកម្ម / Select Service <span class="text-rose-500">* (ចាំបាច់)</span>
+                </label>
+                <div class="grid grid-cols-1 gap-2.5">
+                    {% for s in services %}
+                    <label class="relative flex items-center p-3.5 rounded-2xl border border-slate-800 bg-slate-800/50 hover:bg-slate-800 cursor-pointer transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-950/30 has-[:checked]:ring-1 has-[:checked]:ring-indigo-500">
+                        <input type="radio" name="service_id" value="{{ s.id }}" class="peer sr-only" {% if loop.first %}checked{% endif %}>
+                        <div class="w-10 h-10 rounded-xl bg-slate-700/60 peer-checked:bg-indigo-600 flex items-center justify-center font-bold text-lg text-white mr-3">
+                            {{ s.prefix }}
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="font-bold text-sm text-slate-100">{{ s.name }}</div>
+                            <div class="text-xs text-slate-400">{{ s.description or 'សេវារហ័ស' }} • ~{{ s.avg_service_time }} នាទី/នាក់</div>
+                        </div>
+                        <div class="text-slate-600 peer-checked:text-indigo-400 text-lg">
+                            <i class="fa-solid fa-circle-check"></i>
+                        </div>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Customer Name (MANDATORY) -->
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                    ឈ្មោះរបស់អ្នក / Your Name <span class="text-rose-500 font-bold">* (ចាំបាច់ / Required)</span>
+                </label>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500">
+                        <i class="fa-solid fa-user text-sm"></i>
+                    </span>
+                    <input type="text" id="input-name" name="customer_name" required minlength="2" placeholder="ឧ. សុខា / John" class="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-800/80 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition">
+                </div>
+            </div>
+
+            <!-- Customer Phone (MANDATORY) -->
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                    លេខទូរស័ព្ទ / Phone Number <span class="text-rose-500 font-bold">* (ចាំបាច់ / Required)</span>
+                </label>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500">
+                        <i class="fa-solid fa-phone text-sm"></i>
+                    </span>
+                    <input type="tel" id="input-phone" name="customer_phone" required minlength="8" placeholder="ឧ. 012 345 678" class="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-800/80 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition">
+                </div>
+                <div class="flex items-center space-x-1.5 text-[11px] text-emerald-400 font-semibold mt-1.5">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <span>សារជូនដំណឹងនឹងផ្ញើទៅកាន់ទូរស័ព្ទរបស់អ្នកដោយស្វ័យប្រវត្តិ (Direct SMS & Push)</span>
+                </div>
+            </div>
+
+            <!-- Optional Advanced Options: Telegram (Hidden/Collapsed by default) -->
+            <div class="pt-1">
+                <button type="button" onclick="document.getElementById('telegram-accordion').classList.toggle('hidden')" class="text-xs text-slate-400 hover:text-slate-300 font-medium flex items-center space-x-1.5 transition">
+                    <i class="fa-brands fa-telegram text-sky-400"></i>
+                    <span>ជម្រើសបន្ថែម៖ ទទួលសារតាម Telegram ផងដែរ (មិនបង្ខំ)</span>
+                    <i class="fa-solid fa-chevron-down text-[10px] ml-0.5"></i>
+                </button>
+
+                <div id="telegram-accordion" class="hidden mt-2 p-3.5 rounded-2xl bg-slate-800/60 border border-slate-700/60 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <label class="block text-xs font-bold text-slate-300">
+                            Telegram Chat ID ឬ Username
+                        </label>
+                        <button type="button" onclick="toggleTelegramGuide()" class="text-[11px] text-sky-400 hover:text-sky-300 font-bold flex items-center space-x-1">
+                            <i class="fa-solid fa-circle-question"></i>
+                            <span>របៀបរក?</span>
+                        </button>
+                    </div>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-sky-400">
+                            <i class="fa-brands fa-telegram text-sm"></i>
+                        </span>
+                        <input type="text" id="input-telegram" name="telegram_chat_id" placeholder="ឧ. @username ឬ 1748081463" class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-sky-500 transition">
+                    </div>
+
+                    <!-- Telegram Info Box & Bot Launcher -->
+                    <div id="telegram-guide-box" class="hidden p-3 rounded-xl bg-slate-900/90 border border-sky-500/30 text-xs text-sky-200 space-y-1.5 animate-fade-in shadow-lg">
+                        <div class="font-bold text-sky-300 flex items-center space-x-2">
+                            <i class="fa-brands fa-telegram text-base"></i>
+                            <span>របៀបដឹងលេខ Chat ID របស់អ្នក៖</span>
+                        </div>
+                        <ol class="list-decimal list-inside space-y-1 text-[11px] text-slate-300 pl-1 leading-relaxed">
+                            <li>បើក Telegram រួចស្វែងរក Bot: <strong class="text-white">@userinfobot</strong></li>
+                            <li>ចុច <strong class="text-white">Start</strong> វានឹងបង្ហាញ <span class="font-mono text-sky-300 bg-slate-950 px-1 py-0.5 rounded">Id: 123456789</span></li>
+                            <li>ចម្លងលេខ Id នោះមកដាក់ក្នុងប្រអប់ខាងលើ ឬគ្រាន់តែដាក់ @Username របស់អ្នក</li>
+                        </ol>
+                        <div id="bot-status-container" class="pt-1.5 border-t border-slate-800 text-[11px]">
+                            <span id="bot-status-text" class="text-slate-400">កំពុងពិនិត្យស្ថានភាព Telegram Bot...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" id="btn-submit-ticket" class="w-full mt-2 py-3.5 px-4 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-extrabold text-base rounded-2xl shadow-lg shadow-indigo-600/30 flex items-center justify-center space-x-2 transition active:scale-[0.98]">
+                <span>យកលេខសំបុត្រ / Get Ticket</span>
+                <i class="fa-solid fa-arrow-right"></i>
+            </button>
+        </form>
+    </div>
+
+    <!-- View 2: Live Digital Ticket Pass (Visible when customer has active ticket) -->
+    <div id="section-active-ticket" class="hidden space-y-4">
+
+        <!-- Live Audio & Vibration Alert Status Bar -->
+        <div class="flex items-center justify-between p-3 rounded-2xl bg-slate-900 border border-slate-800 text-xs shadow-md">
+            <div class="flex items-center space-x-2.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span class="text-slate-300 font-bold">ប្រព័ន្ធដាស់តឿនទូរស័ព្ទ (Live Alerts)</span>
+            </div>
+            <button type="button" onclick="testSoundAndVibration()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-indigo-400 hover:text-indigo-300 rounded-xl font-bold text-[11px] flex items-center space-x-1.5 transition active:scale-95 shadow">
+                <i class="fa-solid fa-volume-high"></i>
+                <span>សាកល្បងសំឡេង</span>
+            </button>
+        </div>
+
+        <!-- Mobile Notification Permission Prompt (shown if supported & permission is default) -->
+        <div id="notification-prompt-banner" class="hidden rounded-2xl p-3.5 bg-gradient-to-r from-indigo-950 via-slate-900 to-purple-950 border border-indigo-500/40 flex items-center justify-between shadow-xl">
+            <div class="flex items-center space-x-3">
+                <div class="w-9 h-9 rounded-xl bg-indigo-600/30 border border-indigo-500/50 flex items-center justify-center text-indigo-400 text-sm flex-shrink-0 animate-pulse">
+                    <i class="fa-solid fa-bell"></i>
+                </div>
+                <div class="text-left">
+                    <div class="font-bold text-xs text-white">បើកសារដាស់តឿនលើទូរស័ព្ទ</div>
+                    <div class="text-[11px] text-slate-400">ទទួលដំណឹងពេលជិតដល់វេន & ដល់វេន</div>
+                </div>
+            </div>
+            <button type="button" id="btn-enable-notifications" class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-md transition active:scale-95 flex-shrink-0">
+                បើក / Enable
+            </button>
+        </div>
+
+        <!-- Urgent Alert Banner (pops up when CALLING or ahead <= 2) -->
+        <div id="alert-banner" class="hidden rounded-2xl p-4 border transition-all duration-300">
+            <div class="flex items-center space-x-3">
+                <div id="alert-icon" class="w-10 h-10 rounded-full flex items-center justify-center text-lg flex-shrink-0 animate-bounce">
+                    <i class="fa-solid fa-bell"></i>
+                </div>
+                <div class="flex-1">
+                    <h3 id="alert-title" class="font-bold text-sm">ជិតដល់វេនហើយ!</h3>
+                    <p id="alert-desc" class="text-xs text-slate-200 mt-0.5">សូមត្រៀមខ្លួននៅជិតបញ្ជរបម្រើសេវា</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Special View: Service Completed Hero Banner (Visible when status === 'COMPLETED') -->
+        <div id="section-completed-card" class="hidden rounded-3xl p-6 bg-gradient-to-b from-slate-900 via-slate-900 to-emerald-950/60 border-2 border-emerald-500/70 shadow-2xl shadow-emerald-950/60 text-center space-y-5 animate-fade-in">
+            <div class="w-20 h-20 mx-auto rounded-full bg-emerald-500/20 border-2 border-emerald-400 text-emerald-400 flex items-center justify-center text-4xl shadow-xl shadow-emerald-500/20 animate-bounce">
+                <i class="fa-solid fa-circle-check"></i>
+            </div>
+            
+            <div class="space-y-2">
+                <span class="inline-flex items-center px-3.5 py-1 rounded-full text-xs font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                    <i class="fa-solid fa-check-double mr-1.5"></i> រួចរាល់ / COMPLETED
+                </span>
+                <h2 class="text-3xl font-black text-emerald-400 tracking-tight leading-tight pt-1">
+                    សេវាកម្មបានបញ្ចប់
+                </h2>
+                <h3 class="text-2xl font-black text-white tracking-tight">
+                    លែងមានលេខរៀងទៀត
+                </h3>
+                <p class="text-xs text-slate-300 max-w-xs mx-auto pt-2 leading-relaxed">
+                    សំបុត្រ <span id="completed-ticket-number" class="font-mono font-extrabold text-white bg-slate-800 px-2.5 py-0.5 rounded border border-slate-700">A-001</span> របស់អ្នកត្រូវបានបម្រើសេវារួចរាល់ដោយជោគជ័យ។ លេខរៀងនេះលែងមានក្នុងជួររង់ចាំទៀតហើយ។
+                </p>
+            </div>
+
+            <!-- Summary Info Box -->
+            <div class="p-3.5 bg-slate-800/80 rounded-2xl border border-slate-700/70 flex items-center justify-around text-xs">
+                <div>
+                    <span class="text-slate-400 block text-[10px] uppercase font-bold">សេវាកម្ម / Service</span>
+                    <span id="completed-service-name" class="font-bold text-white">General</span>
+                </div>
+                <div class="w-px h-8 bg-slate-700"></div>
+                <div>
+                    <span class="text-slate-400 block text-[10px] uppercase font-bold">ស្ថានភាព / Status</span>
+                    <span class="font-bold text-emerald-400">បញ្ចប់រួចរាល់ (Done)</span>
+                </div>
+            </div>
+
+            <!-- Primary Action Button: Take New Ticket -->
+            <div class="pt-2">
+                <button type="button" id="btn-completed-new-ticket" class="w-full py-4 px-5 bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-base rounded-2xl shadow-xl shadow-emerald-900/40 flex items-center justify-center space-x-2 transition active:scale-[0.98]">
+                    <i class="fa-solid fa-plus-circle text-lg"></i>
+                    <span>យកសំបុត្រថ្មី / Take New Ticket</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Digital Ticket Card (Boarding Pass Receipt Style - Hidden when Completed) -->
+        <div id="card-ticket-normal-view" class="ticket-cutout shadow-2xl overflow-hidden border border-slate-200">
+            <!-- Ticket Header -->
+            <div class="bg-gradient-to-r from-indigo-600 to-violet-700 px-6 py-5 text-white">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <span class="text-[10px] tracking-wider uppercase opacity-80 font-bold">LineUp Virtual Ticket</span>
+                        <h2 id="card-service-name" class="font-extrabold text-lg leading-tight">General Consultation</h2>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-[10px] uppercase opacity-80 block font-semibold">ម៉ោងចេញ</span>
+                        <span id="card-time" class="text-sm font-bold">12:00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Big Ticket Number Spotlight -->
+            <div class="px-6 py-8 text-center bg-white">
+                <span class="text-xs uppercase tracking-widest text-slate-400 font-extrabold">លេខសំបុត្ររបស់អ្នក / Your Ticket</span>
+                <div id="card-ticket-number" class="text-6xl font-black tracking-tight text-slate-900 my-2 font-mono">
+                    A-001
+                </div>
+                <div id="card-customer-name" class="text-sm font-medium text-slate-600">
+                    Guest
+                </div>
+
+                <!-- Status Badge -->
+                <div class="mt-4">
+                    <span id="card-status-badge" class="inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                        <span class="w-2 h-2 rounded-full bg-amber-500 mr-2 animate-ping"></span>
+                        <span id="card-status-text">កំពុងរង់ចាំ / WAITING</span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Dashed Line with notches -->
+            <div class="px-6 relative">
+                <div class="ticket-dashed-line"></div>
+            </div>
+
+            <!-- ETA and Queue Statistics -->
+            <div class="px-6 pb-6 bg-white text-slate-800">
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-100 text-center">
+                        <span class="text-[11px] font-bold text-slate-500 uppercase block">អ្នកនៅខាងមុខ</span>
+                        <span id="card-ahead-count" class="text-2xl font-black text-indigo-600">0</span>
+                        <span class="text-[10px] text-slate-400 block font-medium">នាក់ / people ahead</span>
+                    </div>
+                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-100 text-center">
+                        <span class="text-[11px] font-bold text-slate-500 uppercase block">ម៉ោងប៉ាន់ស្មាន</span>
+                        <span id="card-eta-time" class="text-2xl font-black text-emerald-600">~0</span>
+                        <span class="text-[10px] text-slate-400 block font-medium">នាទី / mins wait</span>
+                    </div>
+                </div>
+
+                <!-- Assigned Counter (When Called) -->
+                <div id="card-counter-box" class="hidden p-3.5 rounded-xl bg-violet-50 border border-violet-200 text-center mb-4">
+                    <span class="text-xs uppercase font-bold text-violet-800 block">សូមអញ្ជើញទៅកាន់ / Please Proceed To</span>
+                    <span id="card-counter-number" class="text-xl font-extrabold text-violet-900">បញ្ជរលេខ ១ (Counter 1)</span>
+                </div>
+
+                <!-- Footer Tips -->
+                <div class="text-center text-[11px] text-slate-400 flex items-center justify-center space-x-1.5">
+                    <i class="fa-solid fa-volume-high text-indigo-500"></i>
+                    <span>ប្រព័ន្ធនឹងបន្លឺសំឡេងដាស់តឿននៅពេលដល់វេន</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ticket Actions (Hidden when completed) -->
+        <div id="section-ticket-actions" class="flex items-center space-x-2 pt-2">
+            <button id="btn-cancel-ticket" class="flex-1 py-3 px-4 bg-slate-900 border border-slate-800 hover:bg-rose-950/40 hover:border-rose-800/60 text-slate-400 hover:text-rose-400 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5">
+                <i class="fa-solid fa-xmark"></i>
+                <span>បោះបង់សំបុត្រ / Cancel</span>
+            </button>
+            <button id="btn-new-ticket" class="flex-1 py-3 px-4 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5">
+                <i class="fa-solid fa-plus"></i>
+                <span>យកសំបុត្រថ្មី / New</span>
+            </button>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // State
+    let currentTicket = null;
+    let notifiedAlmostTurnTicketId = null;
+    let notifiedCalledTicketId = null;
+    let notifiedCompletedTicketId = null;
+    let serviceWorkerReg = null;
+
+    // Register Service Worker for real background push notifications & vibration on mobile devices
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js').then(reg => {
+            serviceWorkerReg = reg;
+            console.log('[SW] ServiceWorker registered successfully');
+        }).catch(err => {
+            console.warn('[SW] ServiceWorker registration error:', err);
+        });
+    }
+
+    // Toggle Telegram Chat ID guide
+    function toggleTelegramGuide() {
+        const box = document.getElementById('telegram-guide-box');
+        if (box) box.classList.toggle('hidden');
+    }
+
+    // Check Telegram Bot connection status from server
+    async function checkTelegramBotStatus() {
+        try {
+            const resp = await fetch('/api/telegram/status');
+            if (resp.ok) {
+                const data = await resp.json();
+                const container = document.getElementById('bot-status-container');
+                if (!container) return;
+
+                if (data.configured && data.valid && data.bot_username) {
+                    container.innerHTML = `
+                        <div class="flex items-center justify-between p-2 rounded-xl bg-sky-950 border border-sky-600/40 mt-1">
+                            <span class="text-white font-bold">🤖 Bot: @${data.bot_username}</span>
+                            <a href="https://t.me/${data.bot_username}" target="_blank" class="px-2.5 py-1 bg-sky-500 hover:bg-sky-400 text-slate-950 font-black rounded-lg text-[10px] transition">
+                                ចុច Start Bot ទីនេះ
+                            </a>
+                        </div>
+                    `;
+                } else if (data.configured && !data.valid) {
+                    container.innerHTML = `<span class="text-rose-400 font-bold">⚠️ Token Telegram មិនត្រឹមត្រូវ: ${data.error || ''}</span>`;
+                } else {
+                    container.innerHTML = `<span class="text-slate-400">ℹ️ Telegram Bot មិនទាន់ត្រូវបានកំណត់ Token ទេ (កំណត់តាម /admin)</span>`;
+                }
+            }
+        } catch (e) {}
+    }
+    checkTelegramBotStatus();
+
+    // Mobile Phone Notification Helper
+    async function sendMobileNotification(title, body, tag, vibratePattern = [300, 150, 300, 150, 450]) {
+        // 1. Android Chrome & mobile browsers: ServiceWorker showNotification triggers real hardware vibration
+        if (serviceWorkerReg && 'showNotification' in serviceWorkerReg && Notification.permission === 'granted') {
+            try {
+                await serviceWorkerReg.showNotification(title, {
+                    body: body,
+                    tag: tag || 'lineup-notification',
+                    icon: '/static/icons/bell.png',
+                    badge: '/static/icons/bell.png',
+                    vibrate: vibratePattern,
+                    renotify: true,
+                    requireInteraction: true
+                });
+            } catch (e) {
+                console.warn('[SW Notification error]', e);
+            }
+        } else if ('Notification' in window && Notification.permission === 'granted') {
+            // Desktop browser fallback
+            try {
+                new Notification(title, {
+                    body: body,
+                    tag: tag || 'lineup-notification'
+                });
+            } catch (e) {
+                console.warn('[Notification API error]:', e);
+            }
+        }
+
+        // 2. Mobile Hardware Vibration API
+        if (navigator.vibrate) {
+            try {
+                navigator.vibrate(vibratePattern);
+            } catch (e) {}
+        }
+    }
+
+    // Sound & Vibration live tester / audio unlocker
+    function testSoundAndVibration() {
+        window.queueSound.initAudio();
+        window.queueSound.playDingDong();
+
+        if (navigator.vibrate) {
+            try {
+                navigator.vibrate([200, 100, 200]);
+            } catch (e) {}
+        }
+
+        if (serviceWorkerReg && Notification.permission === 'granted') {
+            try {
+                serviceWorkerReg.showNotification('🔊 សាកល្បងសំឡេង និងរំញ័រ', {
+                    body: 'ប្រព័ន្ធដាស់តឿនរបស់ LineUp ដំណើរការល្អជាប្រក្រតី!',
+                    vibrate: [200, 100, 200],
+                    tag: 'test-sound'
+                });
+            } catch (e) {}
+        }
+    }
+
+    // Check & update mobile notification permission banner
+    function updateNotificationBanner() {
+        const banner = document.getElementById('notification-prompt-banner');
+        if (!banner) return;
+        if ('Notification' in window && Notification.permission === 'default') {
+            banner.classList.remove('hidden');
+        } else {
+            banner.classList.add('hidden');
+        }
+    }
+
+    async function requestNotificationPermission() {
+        if (!('Notification' in window)) return false;
+        try {
+            const perm = await Notification.requestPermission();
+            updateNotificationBanner();
+            return perm === 'granted';
+        } catch (e) {
+            console.warn('[Notification] Permission error:', e);
+            return false;
+        }
+    }
+
+    // Attach listener to enable notification button
+    const enableNotifBtn = document.getElementById('btn-enable-notifications');
+    if (enableNotifBtn) {
+        enableNotifBtn.addEventListener('click', () => {
+            window.queueSound.initAudio();
+            requestNotificationPermission();
+        });
+    }
+
+    // Attach listener to completed "take new ticket" button
+    const completedNewBtn = document.getElementById('btn-completed-new-ticket');
+    if (completedNewBtn) {
+        completedNewBtn.addEventListener('click', () => {
+            clearActiveTicket();
+        });
+    }
+
+    // Check LocalStorage on page load
+    const savedTicket = localStorage.getItem('lineup_active_ticket');
+    if (savedTicket) {
+        try {
+            currentTicket = JSON.parse(savedTicket);
+            fetchTicketStatus(currentTicket.id);
+        } catch (e) {
+            localStorage.removeItem('lineup_active_ticket');
+        }
+    }
+
+    // Submit ticket generation
+    document.getElementById('form-ticket').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const nameInput = document.getElementById('input-name');
+        const phoneInput = document.getElementById('input-phone');
+        const errBanner = document.getElementById('ticket-form-error');
+        const errMsg = document.getElementById('ticket-form-error-msg');
+
+        errBanner.classList.add('hidden');
+
+        const nameVal = nameInput.value.trim();
+        const phoneVal = phoneInput.value.trim();
+        const phoneDigits = phoneVal.replace(/\D/g, '');
+
+        if (!nameVal) {
+            errBanner.classList.remove('hidden');
+            errMsg.innerText = "សូមបញ្ចូលឈ្មោះរបស់អ្នក! (Customer Name is required)";
+            nameInput.focus();
+            return;
+        }
+
+        if (!phoneVal) {
+            errBanner.classList.remove('hidden');
+            errMsg.innerText = "សូមបញ្ចូលលេខទូរស័ព្ទរបស់អ្នក! (Phone Number is required)";
+            phoneInput.focus();
+            return;
+        }
+
+        if (phoneDigits.length < 8) {
+            errBanner.classList.remove('hidden');
+            errMsg.innerText = "លេខទូរស័ព្ទមិនត្រឹមត្រូវ! ត្រូវមានយ៉ាងតិច ៨ ខ្ទង់ (Min 8 digits required)";
+            phoneInput.focus();
+            return;
+        }
+
+        window.queueSound.initAudio(); // unlock audio on user gesture
+        requestNotificationPermission(); // request notification permission on user tap
+
+        const form = e.target;
+        const formData = new FormData(form);
+        const submitBtn = document.getElementById('btn-submit-ticket');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> កំពុងដំណើរការ...';
+
+        try {
+            const resp = await fetch('/api/ticket/generate', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await resp.json();
+            if (resp.ok && data.status === 'success') {
+                currentTicket = data.ticket;
+                localStorage.setItem('lineup_active_ticket', JSON.stringify(currentTicket));
+                renderActiveTicket(currentTicket);
+                window.queueSound.playDingDong();
+            } else {
+                errBanner.classList.remove('hidden');
+                errMsg.innerText = data.detail || (data.message || 'បរាជ័យក្នុងការយកសំបុត្រ');
+            }
+        } catch (err) {
+            errBanner.classList.remove('hidden');
+            errMsg.innerText = 'Error connecting to server: ' + err.message;
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<span>យកលេខសំបុត្រ / Get Ticket</span><i class="fa-solid fa-arrow-right ml-2"></i>';
+        }
+    });
+
+    // Fetch live status
+    async function fetchTicketStatus(ticketId) {
+        try {
+            const resp = await fetch(`/api/ticket/${ticketId}/status`);
+            if (resp.ok) {
+                const data = await resp.json();
+                currentTicket = data;
+                localStorage.setItem('lineup_active_ticket', JSON.stringify(currentTicket));
+                renderActiveTicket(currentTicket);
+            } else {
+                // ticket deleted or invalid
+                clearActiveTicket();
+            }
+        } catch (e) {
+            console.error('Failed to fetch status', e);
+        }
+    }
+
+    function renderActiveTicket(t) {
+        document.getElementById('section-generate-ticket').classList.add('hidden');
+        document.getElementById('section-active-ticket').classList.remove('hidden');
+        updateNotificationBanner();
+
+        const completedCard = document.getElementById('section-completed-card');
+        const normalCard = document.getElementById('card-ticket-normal-view');
+        const actionsSection = document.getElementById('section-ticket-actions');
+        const alertBanner = document.getElementById('alert-banner');
+
+        // Check if ticket is COMPLETED
+        if (t.status === 'COMPLETED') {
+            // Prominently show the Completed Hero Card with the exact required Khmer message:
+            // «សេវាកម្មបានបញ្ចប់ លែងមានលេខរៀងទៀត»
+            completedCard.classList.remove('hidden');
+            normalCard.classList.add('hidden');
+            actionsSection.classList.add('hidden');
+            alertBanner.classList.add('hidden');
+
+            document.getElementById('completed-ticket-number').innerText = t.ticket_number;
+            document.getElementById('completed-service-name').innerText = t.service_name || 'General';
+
+            // Send mobile notification and play completion chime once
+            if (notifiedCompletedTicketId !== t.id) {
+                notifiedCompletedTicketId = t.id;
+                sendMobileNotification(
+                    "✅ សេវាកម្មបានបញ្ចប់",
+                    `សំបុត្រ ${t.ticket_number}: សេវាកម្មបានបញ្ចប់ លែងមានលេខរៀងទៀត។ សូមអរគុណ!`,
+                    `ticket-completed-${t.id}`,
+                    [150, 100, 250]
+                );
+                window.queueSound.playCompletionChime();
+            }
+            return;
+        }
+
+        // Active / Waiting / Calling state
+        completedCard.classList.add('hidden');
+        normalCard.classList.remove('hidden');
+        actionsSection.classList.remove('hidden');
+
+        document.getElementById('card-service-name').innerText = t.service_name || 'General';
+        document.getElementById('card-ticket-number').innerText = t.ticket_number;
+        document.getElementById('card-customer-name').innerText = t.customer_name || 'Walk-in Guest';
+        document.getElementById('card-time').innerText = t.created_time || 'Just now';
+        document.getElementById('card-ahead-count').innerText = t.ahead_count || 0;
+        document.getElementById('card-eta-time').innerText = `~${t.estimated_wait_minutes || 0}`;
+
+        const badge = document.getElementById('card-status-badge');
+        const badgeText = document.getElementById('card-status-text');
+        const counterBox = document.getElementById('card-counter-box');
+
+        if (t.status === 'CALLING') {
+            badge.className = 'inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold bg-violet-600 text-white ring-indicator shadow-lg shadow-violet-500/50';
+            badgeText.innerText = '🔔 ដល់វេនរបស់អ្នកហើយ! / YOUR TURN!';
+            counterBox.classList.remove('hidden');
+            document.getElementById('card-counter-number').innerText = `បញ្ជរលេខ ${t.counter_id || 1} (Counter ${t.counter_id || 1})`;
+
+            // Alert banner
+            alertBanner.className = 'rounded-2xl p-4 border bg-violet-950/90 border-violet-500 text-white calling-hero-glow';
+            alertBanner.classList.remove('hidden');
+            document.getElementById('alert-title').innerText = `🎉 ដល់វេនរបស់អ្នកហើយ! សូមទៅកាន់ បញ្ជរលេខ ${t.counter_id || 1}`;
+            document.getElementById('alert-desc').innerText = `Your Ticket ${t.ticket_number} is being called at Counter ${t.counter_id || 1}`;
+            document.getElementById('alert-icon').className = 'w-10 h-10 rounded-full bg-violet-500 text-white flex items-center justify-center text-lg animate-bounce';
+
+            // Send notification to customer's mobile phone
+            if (notifiedCalledTicketId !== t.id) {
+                notifiedCalledTicketId = t.id;
+                sendMobileNotification(
+                    "🔔 ដល់វេនរបស់អ្នកហើយ! (YOUR TURN!)",
+                    `សំបុត្រ ${t.ticket_number}: សូមអញ្ជើញទៅកាន់ បញ្ជរលេខ ${t.counter_id || 1}!`,
+                    `ticket-called-${t.id}`,
+                    [300, 150, 300, 150, 450]
+                );
+            }
+
+        } else if (t.status === 'SERVING') {
+            badge.className = 'inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold bg-emerald-600 text-white';
+            badgeText.innerText = 'កំពុងទទួលសេវាកម្ម / SERVING';
+            counterBox.classList.remove('hidden');
+            document.getElementById('card-counter-number').innerText = `បញ្ជរលេខ ${t.counter_id || 1} (Counter ${t.counter_id || 1})`;
+            alertBanner.classList.add('hidden');
+
+        } else if (t.status === 'NO_SHOW') {
+            badge.className = 'inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold bg-rose-600 text-white';
+            badgeText.innerText = 'ខកខានវេន / NO SHOW';
+            alertBanner.classList.remove('hidden');
+            alertBanner.className = 'rounded-2xl p-4 border bg-rose-950/80 border-rose-600 text-rose-200';
+            document.getElementById('alert-title').innerText = 'ខកខានវេន (Missed Turn)';
+            document.getElementById('alert-desc').innerText = 'អ្នកមិនបានមកបង្ហាញខ្លួនទាន់ពេល។ សូមចុច យកសំបុត្រថ្មី';
+
+        } else {
+            // WAITING
+            badge.className = 'inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-900 border border-indigo-300';
+            badgeText.innerText = 'កំពុងរង់ចាំ / WAITING';
+            counterBox.classList.add('hidden');
+
+            if (t.ahead_count <= 2 && t.ahead_count > 0) {
+                alertBanner.className = 'rounded-2xl p-4 border bg-amber-950/80 border-amber-500 text-amber-200';
+                alertBanner.classList.remove('hidden');
+                document.getElementById('alert-title').innerText = `⚠️ ជិតដល់វេនហើយ! នៅសល់តែ ${t.ahead_count} នាក់ទៀត`;
+                document.getElementById('alert-desc').innerText = 'Almost your turn! Please stand by near the counter.';
+
+                // Send notification to customer's mobile phone
+                if (notifiedAlmostTurnTicketId !== t.id) {
+                    notifiedAlmostTurnTicketId = t.id;
+                    sendMobileNotification(
+                        "⚠️ ជិតដល់វេនរបស់អ្នកហើយ!",
+                        `សំបុត្រ ${t.ticket_number}: នៅសល់តែ ${t.ahead_count} នាក់ទៀតប៉ុណ្ណោះ! សូមត្រៀមខ្លួននៅជិតបញ្ជរ។`,
+                        `ticket-almost-${t.id}`,
+                        [200, 100, 200]
+                    );
+                    window.queueSound.playDingDong();
+                }
+            } else {
+                alertBanner.classList.add('hidden');
+            }
+        }
+    }
+
+    function clearActiveTicket() {
+        currentTicket = null;
+        notifiedAlmostTurnTicketId = null;
+        notifiedCalledTicketId = null;
+        notifiedCompletedTicketId = null;
+        localStorage.removeItem('lineup_active_ticket');
+        document.getElementById('section-active-ticket').classList.add('hidden');
+        document.getElementById('section-generate-ticket').classList.remove('hidden');
+    }
+
+    // Cancel ticket button
+    document.getElementById('btn-cancel-ticket').addEventListener('click', async () => {
+        if (!currentTicket) return;
+        if (confirm('តើអ្នកពិតជាចង់បោះបង់សំបុត្រនេះមែនទេ? (Cancel Ticket?)')) {
+            await fetch(`/api/ticket/${currentTicket.id}/cancel`, { method: 'POST' });
+            clearActiveTicket();
+        }
+    });
+
+    // New ticket button
+    document.getElementById('btn-new-ticket').addEventListener('click', () => {
+        clearActiveTicket();
+    });
+
+    // Real-time WebSocket Listeners
+    window.queueSocket.on('*', (data) => {
+        if (!currentTicket) return;
+
+        // If this event affects our ticket directly
+        if (data.event === 'TICKET_CALLED' && data.ticket.id === currentTicket.id) {
+            currentTicket = data.ticket;
+            localStorage.setItem('lineup_active_ticket', JSON.stringify(currentTicket));
+            renderActiveTicket(currentTicket);
+            window.queueSound.playUrgentAlert();
+            window.queueSound.announceTicket(currentTicket.ticket_number, data.counter);
+
+        } else if (data.event === 'TICKET_RECALLED' && data.ticket.id === currentTicket.id) {
+            renderActiveTicket(data.ticket);
+            window.queueSound.playUrgentAlert();
+
+        } else if ((data.event === 'TICKET_SERVED' || data.event === 'TICKET_COMPLETED' || data.event === 'TICKET_NOSHOW') && data.ticket.id === currentTicket.id) {
+            currentTicket = data.ticket;
+            localStorage.setItem('lineup_active_ticket', JSON.stringify(currentTicket));
+            renderActiveTicket(currentTicket);
+
+        } else if (data.event === 'QUEUE_RESET') {
+            clearActiveTicket();
+
+        } else {
+            // General queue update - refresh ahead count & ETA
+            fetchTicketStatus(currentTicket.id);
+        }
+    });
+</script>
+{% endblock %}

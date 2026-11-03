@@ -1,0 +1,855 @@
+{% extends "base.html" %}
+
+{% block title %}LineUp - ផ្ទាំងគ្រប់គ្រងបុគ្គលិក (Staff Dashboard){% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto w-full px-4 py-6 space-y-6">
+
+    <!-- Top Bar: Counter & Service Assignment Controls -->
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl">
+        <div class="flex items-center space-x-3 w-full md:w-auto">
+            <div class="w-12 h-12 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 text-xl font-bold">
+                <i class="fa-solid fa-headset"></i>
+            </div>
+            <div>
+                <h1 class="text-lg font-black text-white">ផ្ទាំងគ្រប់គ្រងបញ្ជរបុគ្គលិក (Staff Control)</h1>
+                <p class="text-xs text-slate-400">Manage queue calls, recall, service times, and no-shows</p>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+            <!-- Counter Selector -->
+            <div class="flex items-center space-x-2 bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700">
+                <label for="select-counter" class="text-xs font-bold text-slate-400 uppercase">បញ្ជរ / Counter:</label>
+                <select id="select-counter" class="bg-slate-900 text-white font-bold text-sm rounded-lg px-2.5 py-1 border border-slate-600 focus:outline-none focus:border-indigo-500">
+                    {% for c in range(1, 7) %}
+                    <option value="{{ c }}" {% if current_user and current_user.counter_number == c %}selected{% endif %}>Counter {{ c }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Service Filter -->
+            <div class="flex items-center space-x-2 bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700">
+                <label for="select-service-filter" class="text-xs font-bold text-slate-400 uppercase">សេវា / Filter:</label>
+                <select id="select-service-filter" class="bg-slate-900 text-white font-bold text-sm rounded-lg px-2.5 py-1 border border-slate-600 focus:outline-none focus:border-indigo-500">
+                    <option value="">គ្រប់សេវាកម្ម (All Services)</option>
+                    {% for s in services %}
+                    <option value="{{ s.id }}">{{ s.prefix }} - {{ s.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Reset Queue Button (Admin Only) -->
+            {% if current_user and current_user.role == 'admin' %}
+            <button id="btn-reset-queue" class="px-3 py-2 bg-rose-950/60 hover:bg-rose-900 border border-rose-800 text-rose-300 text-xs font-bold rounded-xl transition flex items-center space-x-1.5" title="Admin Queue Reset">
+                <i class="fa-solid fa-rotate-right"></i>
+                <span>Reset Queue (Admin)</span>
+            </button>
+            {% else %}
+            <span class="px-2.5 py-1.5 rounded-xl bg-slate-800/60 text-slate-500 text-xs font-semibold border border-slate-800 flex items-center" title="ទាមទារសិទ្ធិជា Admin ទើបអាច Reset បាន">
+                <i class="fa-solid fa-lock text-[10px] mr-1.5 text-slate-500"></i>Reset (Admin Only)
+            </span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Analytics Stat Cards -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 text-center shadow">
+            <span class="text-[11px] font-bold text-slate-400 uppercase block">ភ្ញៀវសរុប (Total)</span>
+            <span id="stat-total" class="text-2xl font-black text-white mt-1 block">0</span>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 text-center shadow">
+            <span class="text-[11px] font-bold text-amber-400 uppercase block">រង់ចាំ (Waiting)</span>
+            <span id="stat-waiting" class="text-2xl font-black text-amber-400 mt-1 block">0</span>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 text-center shadow">
+            <span class="text-[11px] font-bold text-indigo-400 uppercase block">កំពុងហៅ (Calling)</span>
+            <span id="stat-calling" class="text-2xl font-black text-indigo-400 mt-1 block">0</span>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 text-center shadow">
+            <span class="text-[11px] font-bold text-emerald-400 uppercase block">កំពុងបម្រើ (Serving)</span>
+            <span id="stat-serving" class="text-2xl font-black text-emerald-400 mt-1 block">0</span>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 text-center shadow">
+            <span class="text-[11px] font-bold text-teal-400 uppercase block">បានបញ្ចប់ (Done)</span>
+            <span id="stat-completed" class="text-2xl font-black text-teal-400 mt-1 block">0</span>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 text-center shadow">
+            <span class="text-[11px] font-bold text-rose-400 uppercase block">ខកខាន (No-Show)</span>
+            <span id="stat-noshow" class="text-2xl font-black text-rose-400 mt-1 block">0</span>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 text-center shadow col-span-2 sm:col-span-1">
+            <span class="text-[11px] font-bold text-sky-400 uppercase block">មធ្យមរង់ចាំ (Avg Wait)</span>
+            <span id="stat-avg-wait" class="text-2xl font-black text-sky-400 mt-1 block">0m</span>
+        </div>
+    </div>
+
+    <!-- Active Counter Operations Card (Primary Focus) -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Left 2 Cols: Main Counter Action Station -->
+        <div class="lg:col-span-2 space-y-4">
+            <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl relative overflow-hidden">
+
+                <!-- Ambient glow behind card -->
+                <div class="absolute -top-24 -right-24 w-72 h-72 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-800">
+                    <div class="flex items-center space-x-2">
+                        <span id="current-counter-badge" class="px-3 py-1 rounded-full text-xs font-extrabold bg-indigo-600 text-white">
+                            COUNTER 1
+                        </span>
+                        <span class="text-xs text-slate-400 font-semibold">ស្ថានីយបម្រើសេវាផ្ទាល់</span>
+                    </div>
+
+                    <!-- No Show Countdown badge -->
+                    <div id="noshow-timer-container" class="hidden flex items-center space-x-2 bg-rose-950/40 border border-rose-800/80 px-3 py-1 rounded-full">
+                        <i class="fa-solid fa-stopwatch text-rose-400 text-xs animate-pulse"></i>
+                        <span class="text-xs font-bold text-rose-300">Auto No-Show: <span id="noshow-timer-sec">180</span>s</span>
+                    </div>
+                </div>
+
+                <!-- Active Ticket Display Card -->
+                <div id="active-ticket-container" class="my-6">
+                    <!-- When Ticket is Active -->
+                    <div id="box-has-ticket" class="hidden text-center py-4 bg-slate-950/60 rounded-2xl border border-slate-800 p-6">
+                        <span id="active-ticket-service" class="text-xs uppercase font-extrabold text-indigo-400 tracking-wider">
+                            General Consultation
+                        </span>
+                        <div id="active-ticket-number" class="text-7xl font-black tracking-tight text-white my-2 font-mono">
+                            A-001
+                        </div>
+                        <div class="flex items-center justify-center space-x-3 text-sm text-slate-300 font-medium">
+                            <span id="active-ticket-name"><i class="fa-solid fa-user mr-1.5 text-slate-500"></i> John Doe</span>
+                            <span id="active-ticket-phone" class="text-slate-400"></span>
+                        </div>
+
+                        <!-- Status pill -->
+                        <div class="mt-4">
+                            <span id="active-ticket-status-pill" class="inline-flex items-center px-4 py-1.5 rounded-full text-xs font-black bg-violet-600 text-white animate-pulse">
+                                🔔 កំពុងហៅ / CALLING
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- When NO Ticket is Active -->
+                    <div id="box-no-ticket" class="text-center py-12 bg-slate-950/40 rounded-2xl border border-dashed border-slate-800">
+                        <div class="w-16 h-16 rounded-full bg-slate-800/60 flex items-center justify-center mx-auto mb-3 text-slate-500 text-2xl">
+                            <i class="fa-solid fa-inbox"></i>
+                        </div>
+                        <h3 class="text-base font-bold text-slate-300">មិនទាន់មានអតិថិជននៅបញ្ជរនេះទេ</h3>
+                        <p class="text-xs text-slate-500 mt-1 max-w-sm mx-auto">ចុចប៊ូតុង "ហៅលេខបន្ទាប់ (Call Next)" ដើម្បីកោះហៅអតិថិជនដែលកំពុងរង់ចាំ</p>
+                    </div>
+                </div>
+
+                <!-- Primary Action Buttons -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+                    <!-- Call Next (Prominent) -->
+                    <button id="btn-call-next" class="col-span-2 sm:col-span-2 py-4 px-6 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-black text-base rounded-2xl shadow-xl shadow-indigo-600/30 flex items-center justify-center space-x-2 transition active:scale-[0.98]">
+                        <i class="fa-solid fa-bullhorn text-lg"></i>
+                        <span>ហៅលេខបន្ទាប់ / Call Next</span>
+                    </button>
+
+                    <!-- Recall -->
+                    <button id="btn-recall" disabled class="py-4 px-4 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:pointer-events-none text-white font-bold text-sm rounded-2xl border border-slate-700 flex items-center justify-center space-x-2 transition">
+                        <i class="fa-solid fa-volume-high text-amber-400"></i>
+                        <span>ហៅម្តងទៀត / Recall</span>
+                    </button>
+
+                    <!-- Start Serving -->
+                    <button id="btn-serve" disabled class="py-4 px-4 bg-slate-800 hover:bg-emerald-700 disabled:opacity-40 disabled:pointer-events-none text-white font-bold text-sm rounded-2xl border border-slate-700 flex items-center justify-center space-x-2 transition">
+                        <i class="fa-solid fa-play text-emerald-400"></i>
+                        <span>បម្រើសេវា / Serve</span>
+                    </button>
+
+                    <!-- Complete -->
+                    <button id="btn-complete" disabled class="col-span-1 sm:col-span-2 py-3.5 px-4 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:pointer-events-none text-white font-black text-sm rounded-2xl shadow-lg shadow-emerald-600/20 flex items-center justify-center space-x-2 transition">
+                        <i class="fa-solid fa-check-circle text-base"></i>
+                        <span>បញ្ចប់សេវា / Complete</span>
+                    </button>
+
+                    <!-- Mark No-Show -->
+                    <button id="btn-noshow" disabled class="col-span-1 sm:col-span-2 py-3.5 px-4 bg-rose-950/80 hover:bg-rose-900 disabled:opacity-40 disabled:pointer-events-none text-rose-300 font-bold text-sm rounded-2xl border border-rose-800/80 flex items-center justify-center space-x-2 transition">
+                        <i class="fa-solid fa-user-slash text-base"></i>
+                        <span>ខកខានវេន / Mark No-Show</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Col: Quick Manual Walk-in Generator & Queue Info -->
+        <div class="space-y-4">
+            <!-- Manual Ticket Issuer Card -->
+            <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-xl">
+                <div class="flex items-center space-x-2 mb-4 pb-2 border-b border-slate-800">
+                    <i class="fa-solid fa-print text-indigo-400"></i>
+                    <h3 class="text-sm font-black text-white">ចេញសំបុត្រផ្ទាល់ (Walk-In Ticket)</h3>
+                </div>
+
+                <form id="form-walkin" class="space-y-3">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-400 uppercase mb-1">ជ្រើសរើសសេវាកម្ម:</label>
+                        <select name="service_id" class="w-full bg-slate-800 text-white font-semibold text-xs rounded-xl px-3 py-2.5 border border-slate-700 focus:outline-none focus:border-indigo-500">
+                            {% for s in services %}
+                            <option value="{{ s.id }}">{{ s.prefix }} - {{ s.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-400 uppercase mb-1">ឈ្មោះភ្ញៀវ / Name <span class="text-rose-500">*</span>:</label>
+                        <input type="text" id="staff-walkin-name" name="customer_name" required placeholder="ឧ. លោក សុខ / Walk-in" class="w-full bg-slate-800 text-white text-xs rounded-xl px-3 py-2.5 border border-slate-700 placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+                    </div>
+
+                    <!-- No-Phone Checkbox -->
+                    <div class="p-2.5 bg-slate-800/80 rounded-xl border border-slate-700/80">
+                        <label class="flex items-center space-x-2 cursor-pointer">
+                            <input type="checkbox" id="staff-walkin-no-phone" name="no_phone" value="true" class="w-3.5 h-3.5 rounded text-indigo-600 focus:ring-indigo-500 border-slate-700 bg-slate-900 cursor-pointer">
+                            <span class="text-[11px] font-extrabold text-slate-200">
+                                ភ្ញៀវគ្មានទូរស័ព្ទ (No Phone / Walk-in)
+                            </span>
+                        </label>
+                    </div>
+
+                    <div id="staff-walkin-phone-container">
+                        <label class="block text-[11px] font-bold text-slate-400 uppercase mb-1">លេខទូរស័ព្ទ (Phone) <span id="staff-walkin-phone-req" class="text-rose-500">*</span>:</label>
+                        <input type="tel" id="staff-walkin-phone" name="customer_phone" required placeholder="012 345 678" class="w-full bg-slate-800 text-white text-xs rounded-xl px-3 py-2.5 border border-slate-700 placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+                    </div>
+
+                    <!-- Auto-Print Checkbox -->
+                    <div class="p-2.5 bg-indigo-950/40 rounded-xl border border-indigo-500/30">
+                        <label class="flex items-center space-x-2 cursor-pointer">
+                            <input type="checkbox" id="staff-walkin-auto-print" name="auto_print" checked class="w-3.5 h-3.5 rounded text-indigo-600 focus:ring-indigo-500 border-slate-700 bg-slate-900 cursor-pointer">
+                            <span class="text-[11px] font-black text-indigo-200">
+                                🖨️ បោះពុម្ពសំបុត្រផ្ទាល់ (Print Ticket Slip)
+                            </span>
+                        </label>
+                    </div>
+
+                    <button type="submit" id="btn-staff-walkin-submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-xl transition flex items-center justify-center space-x-2 shadow-md shadow-indigo-600/30 active:scale-95">
+                        <i class="fa-solid fa-print"></i>
+                        <span>ចេញសំបុត្រ & បោះពុម្ព / Issue & Print</span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Mobile Scan QR Preview for Presentation -->
+            <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-xl text-center">
+                <span class="text-xs font-bold text-slate-400 uppercase block mb-2">QR Code សម្រាប់ទូរស័ព្ទ / Mobile Scan</span>
+                <div class="bg-white p-3 rounded-2xl inline-block shadow-inner mx-auto">
+                    <img src="/api/qr" alt="QR Code" class="w-32 h-32 object-contain">
+                </div>
+                <div class="mt-3 flex items-center justify-center">
+                    <button type="button" onclick="navigator.clipboard.writeText('{{ portal_url }}'); alert('បានចម្លងតំណភ្ជាប់ជោគជ័យ!');" class="text-xs px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-400 border border-slate-700 flex items-center space-x-1.5 transition">
+                        <i class="fa-solid fa-copy"></i>
+                        <span>ចម្លង Link / Copy Link</span>
+                    </button>
+                </div>
+                {% if is_public %}
+                <span class="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 inline-block mt-1">
+                    🌍 ដំណើរការលើគ្រប់ Wi-Fi & 4G/5G
+                </span>
+                {% else %}
+                <p class="text-[10px] text-slate-500 mt-1">គ្រូ ឬមិត្តភក្តិអាចភ្ជាប់ Wi-Fi រួចស្កេនដើម្បីសាកល្បង</p>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Bottom Queue Lists Section -->
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
+        <div class="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
+            <div class="flex items-center space-x-4">
+                <button id="tab-btn-waiting" class="text-sm font-black text-indigo-400 border-b-2 border-indigo-500 pb-2 flex items-center space-x-2">
+                    <span>ជួររង់ចាំ (Waiting Line)</span>
+                    <span id="tab-count-waiting" class="px-2 py-0.5 rounded-full text-xs bg-indigo-500/20 text-indigo-300">0</span>
+                </button>
+                <button id="tab-btn-active" class="text-sm font-semibold text-slate-400 hover:text-white pb-2 flex items-center space-x-2">
+                    <span>កំពុងបម្រើការ (Active Counters)</span>
+                    <span id="tab-count-active" class="px-2 py-0.5 rounded-full text-xs bg-slate-800 text-slate-400">0</span>
+                </button>
+                <button id="tab-btn-history" class="text-sm font-semibold text-slate-400 hover:text-white pb-2 flex items-center space-x-2">
+                    <span>ប្រវត្តិ (History)</span>
+                    <span id="tab-count-history" class="px-2 py-0.5 rounded-full text-xs bg-slate-800 text-slate-400">0</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Waiting Line Table -->
+        <div id="view-waiting-table" class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead>
+                    <tr class="text-[11px] font-bold uppercase text-slate-400 border-b border-slate-800">
+                        <th class="py-3 px-3">លេខសំបុត្រ (Ticket)</th>
+                        <th class="py-3 px-3">សេវាកម្ម (Service)</th>
+                        <th class="py-3 px-3">ឈ្មោះអតិថិជន (Customer)</th>
+                        <th class="py-3 px-3">ម៉ោងយក (Time)</th>
+                        <th class="py-3 px-3 text-right">សកម្មភាព (Actions)</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-waiting" class="divide-y divide-slate-800/60 font-medium">
+                    <!-- Dynamic Rows -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Active Counters Table -->
+        <div id="view-active-table" class="hidden overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead>
+                    <tr class="text-[11px] font-bold uppercase text-slate-400 border-b border-slate-800">
+                        <th class="py-3 px-3">បញ្ជរ (Counter)</th>
+                        <th class="py-3 px-3">លេខសំបុត្រ (Ticket)</th>
+                        <th class="py-3 px-3">សេវាកម្ម (Service)</th>
+                        <th class="py-3 px-3">ស្ថានភាព (Status)</th>
+                        <th class="py-3 px-3">ម៉ោងហៅ (Called Time)</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-active" class="divide-y divide-slate-800/60 font-medium">
+                    <!-- Dynamic Rows -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- History Table -->
+        <div id="view-history-table" class="hidden overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead>
+                    <tr class="text-[11px] font-bold uppercase text-slate-400 border-b border-slate-800">
+                        <th class="py-3 px-3">លេខសំបុត្រ</th>
+                        <th class="py-3 px-3">សេវាកម្ម</th>
+                        <th class="py-3 px-3">អតិថិជន</th>
+                        <th class="py-3 px-3">លទ្ធផល</th>
+                        <th class="py-3 px-3">ម៉ោងបញ្ចប់</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-history" class="divide-y divide-slate-800/60 font-medium">
+                    <!-- Dynamic Rows -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Walk-In Issued Ticket Modal for Staff -->
+    <div id="staff-walkin-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 rounded-3xl p-6 sm:p-8 max-w-sm w-full text-center shadow-2xl relative animate-fade-in">
+            <div class="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center text-3xl mx-auto mb-3">
+                <i class="fa-solid fa-print"></i>
+            </div>
+            <span class="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 mb-2">
+                <i class="fa-solid fa-circle-check mr-1.5"></i> បានចេញសំបុត្រជោគជ័យ
+            </span>
+            <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">លេខសំបុត្រផ្ទាល់ / WALK-IN TICKET</div>
+            
+            <div id="staff-modal-number" class="text-5xl font-black font-mono text-white my-2 tracking-tight">
+                A-001
+            </div>
+            
+            <div class="p-3 bg-slate-800/80 rounded-2xl border border-slate-700 text-left space-y-1 my-3 text-xs">
+                <div class="flex justify-between">
+                    <span class="text-slate-400">ឈ្មោះ / Name:</span>
+                    <span id="staff-modal-customer" class="font-bold text-white">Sokha</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-400">សេវាកម្ម / Service:</span>
+                    <span id="staff-modal-service" class="font-bold text-indigo-400">General</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-400">អ្នកនៅខាងមុខ / Ahead:</span>
+                    <span id="staff-modal-ahead" class="font-bold text-amber-400">0 នាក់</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-400">ម៉ោងប៉ាន់ស្មាន / ETA:</span>
+                    <span id="staff-modal-eta" class="font-bold text-emerald-400">~0 នាទី</span>
+                </div>
+            </div>
+
+            <div class="mt-4 flex items-center space-x-3">
+                <button type="button" onclick="window.print()" class="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition text-xs flex items-center justify-center space-x-1.5 shadow-md shadow-indigo-600/30 active:scale-95">
+                    <i class="fa-solid fa-print"></i>
+                    <span>បោះពុម្ព / Print</span>
+                </button>
+                <button type="button" onclick="closeStaffWalkinModal()" class="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl transition text-xs active:scale-95">
+                    បិទ / Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==============================================================================
+         High-End Thermal Receipt Slip for Staff (Visible ONLY when printing via @media print)
+         ============================================================================== -->
+    <div id="printable-ticket-slip" class="hidden">
+        <div class="ticket-slip-card">
+            <!-- Top Header & Brand -->
+            <div class="ticket-slip-header">
+                <div class="ticket-slip-logo">
+                    <span class="ticket-brand-icon">❖</span>
+                    <span class="ticket-brand-name">LineUp</span>
+                </div>
+                <p class="ticket-subtitle">Smart Virtual Queue System</p>
+                <div class="ticket-divider-dots">• • • • • • • • • • • • • • • • • • • •</div>
+            </div>
+
+            <!-- Meta info: Service & Date -->
+            <div class="ticket-meta-block">
+                <div class="ticket-meta-row">
+                    <span class="ticket-meta-label">សេវាកម្ម (Service):</span>
+                    <span id="print-service-name" class="ticket-meta-val">General</span>
+                </div>
+                <div class="ticket-meta-row">
+                    <span class="ticket-meta-label">កាលបរិច្ឆេទ (Date/Time):</span>
+                    <span id="print-date-time" class="ticket-meta-val">03/11/2026, 10:45 AM</span>
+                </div>
+            </div>
+
+            <!-- Giant Ticket Hero Box -->
+            <div class="ticket-hero-box">
+                <div class="ticket-hero-label">លេខសំបុត្ររបស់អ្នក / YOUR TICKET</div>
+                <div id="print-ticket-number" class="ticket-hero-number">A-001</div>
+                <div class="ticket-hero-badge">សូមរង់ចាំការកោះហៅ</div>
+            </div>
+
+            <!-- Queue Summary Table (Clean, NO phone row) -->
+            <div class="ticket-info-table">
+                <div class="ticket-info-row">
+                    <span class="info-label">ឈ្មោះភ្ញៀវ / Name:</span>
+                    <span id="print-customer-name" class="info-val">Sokha</span>
+                </div>
+                <div class="ticket-info-row">
+                    <span class="info-label">អ្នកនៅខាងមុខ / Ahead:</span>
+                    <span id="print-ahead-count" class="info-val">0 នាក់</span>
+                </div>
+                <div class="ticket-info-row">
+                    <span class="info-label">រង់ចាំប្រហែល / Est. Wait:</span>
+                    <span id="print-eta-minutes" class="info-val">~0 នាទី</span>
+                </div>
+            </div>
+
+            <!-- Decorative Simulated Barcode -->
+            <div class="ticket-barcode-wrap">
+                <div class="ticket-barcode-lines">
+                    ||| | |||| | ||| || |||| | || ||| ||| | |||
+                </div>
+                <div id="print-barcode-text" class="ticket-barcode-label">* A-001-20261103 *</div>
+            </div>
+
+            <!-- Perforated Tear-Line -->
+            <div class="ticket-tear-line">
+                - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            </div>
+
+            <!-- Footer Notice -->
+            <div class="ticket-footer">
+                <p class="footer-important">★ សូមរង់ចាំ និងស្តាប់ការកោះហៅលើអេក្រង់ TV ★</p>
+                <p class="footer-en">Please watch & listen for your number on the TV Display</p>
+                <p class="footer-thanks">សូមអរគុណ! / THANK YOU</p>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let activeCounter = parseInt(document.getElementById('select-counter').value) || 1;
+    document.getElementById('current-counter-badge').innerText = `COUNTER ${activeCounter}`;
+    let currentStaffTicket = null;
+    let noshowTimerInterval = null;
+    let noshowSecondsLeft = 180;
+
+    // Load initial queue state
+    refreshQueueData();
+
+    // Counter selection change
+    document.getElementById('select-counter').addEventListener('change', (e) => {
+        activeCounter = parseInt(e.target.value);
+        document.getElementById('current-counter-badge').innerText = `COUNTER ${activeCounter}`;
+        refreshQueueData();
+    });
+
+    // Fetch queue tables & stats
+    async function refreshQueueData() {
+        try {
+            const resp = await fetch('/api/staff/queue-data');
+            const data = await resp.json();
+            renderStats(data.stats);
+            renderTables(data);
+            detectCurrentCounterTicket(data.calling_or_serving);
+        } catch (err) {
+            console.error('Queue data refresh error', err);
+        }
+    }
+
+    function renderStats(stats) {
+        if (!stats) return;
+        document.getElementById('stat-total').innerText = stats.total_today;
+        document.getElementById('stat-waiting').innerText = stats.waiting;
+        document.getElementById('stat-calling').innerText = stats.calling;
+        document.getElementById('stat-serving').innerText = stats.serving;
+        document.getElementById('stat-completed').innerText = stats.completed;
+        document.getElementById('stat-noshow').innerText = stats.no_show;
+        document.getElementById('stat-avg-wait').innerText = `${stats.avg_wait_minutes}m`;
+    }
+
+    function detectCurrentCounterTicket(activeTickets) {
+        const myTicket = activeTickets.find(t => t.counter_id === activeCounter);
+        currentStaffTicket = myTicket || null;
+
+        const boxHas = document.getElementById('box-has-ticket');
+        const boxNo = document.getElementById('box-no-ticket');
+        const btnRecall = document.getElementById('btn-recall');
+        const btnServe = document.getElementById('btn-serve');
+        const btnComplete = document.getElementById('btn-complete');
+        const btnNoshow = document.getElementById('btn-noshow');
+        const timerContainer = document.getElementById('noshow-timer-container');
+
+        if (myTicket) {
+            boxHas.classList.remove('hidden');
+            boxNo.classList.add('hidden');
+
+            document.getElementById('active-ticket-service').innerText = myTicket.service_name;
+            document.getElementById('active-ticket-number').innerText = myTicket.ticket_number;
+            document.getElementById('active-ticket-name').innerHTML = `<i class="fa-solid fa-user mr-1.5 text-slate-500"></i> ${myTicket.customer_name}`;
+            document.getElementById('active-ticket-phone').innerText = myTicket.customer_phone ? `• ${myTicket.customer_phone}` : '';
+
+            const statusPill = document.getElementById('active-ticket-status-pill');
+            if (myTicket.status === 'CALLING') {
+                statusPill.className = 'inline-flex items-center px-4 py-1.5 rounded-full text-xs font-black bg-violet-600 text-white animate-pulse';
+                statusPill.innerText = `🔔 កំពុងហៅ / CALLING (ហៅ ${myTicket.call_count || 1} ដង)`;
+                btnRecall.disabled = false;
+                btnServe.disabled = false;
+                btnComplete.disabled = false;
+                btnNoshow.disabled = false;
+
+                // Start No-Show Countdown
+                startNoShowCountdown();
+            } else if (myTicket.status === 'SERVING') {
+                statusPill.className = 'inline-flex items-center px-4 py-1.5 rounded-full text-xs font-black bg-emerald-600 text-white';
+                statusPill.innerText = '⚙️ កំពុងបម្រើសេវា / SERVING';
+                btnRecall.disabled = true;
+                btnServe.disabled = true;
+                btnComplete.disabled = false;
+                btnNoshow.disabled = false;
+                stopNoShowCountdown();
+            }
+        } else {
+            boxHas.classList.add('hidden');
+            boxNo.classList.remove('hidden');
+            btnRecall.disabled = true;
+            btnServe.disabled = true;
+            btnComplete.disabled = true;
+            btnNoshow.disabled = true;
+            stopNoShowCountdown();
+        }
+    }
+
+    function startNoShowCountdown() {
+        stopNoShowCountdown();
+        noshowSecondsLeft = 180;
+        const container = document.getElementById('noshow-timer-container');
+        const secEl = document.getElementById('noshow-timer-sec');
+        container.classList.remove('hidden');
+        secEl.innerText = noshowSecondsLeft;
+
+        noshowTimerInterval = setInterval(() => {
+            noshowSecondsLeft--;
+            secEl.innerText = noshowSecondsLeft;
+            if (noshowSecondsLeft <= 0) {
+                stopNoShowCountdown();
+                // Auto trigger no-show
+                if (currentStaffTicket && currentStaffTicket.status === 'CALLING') {
+                    markNoShow();
+                }
+            }
+        }, 1000);
+    }
+
+    function stopNoShowCountdown() {
+        if (noshowTimerInterval) {
+            clearInterval(noshowTimerInterval);
+            noshowTimerInterval = null;
+        }
+        document.getElementById('noshow-timer-container').classList.add('hidden');
+    }
+
+    function renderTables(data) {
+        document.getElementById('tab-count-waiting').innerText = data.waiting.length;
+        document.getElementById('tab-count-active').innerText = data.calling_or_serving.length;
+        document.getElementById('tab-count-history').innerText = data.history.length;
+
+        // Waiting Table
+        const tbodyWaiting = document.getElementById('tbody-waiting');
+        if (data.waiting.length === 0) {
+            tbodyWaiting.innerHTML = '<tr><td colspan="5" class="py-8 text-center text-slate-500 font-normal">គ្មានអតិថិជនរង់ចាំទេ (No waiting customers)</td></tr>';
+        } else {
+            tbodyWaiting.innerHTML = data.waiting.map(t => `
+                <tr class="hover:bg-slate-800/40 transition">
+                    <td class="py-3 px-3 font-mono font-black text-indigo-400 text-base">${t.ticket_number}</td>
+                    <td class="py-3 px-3 text-slate-300">${t.service_name}</td>
+                    <td class="py-3 px-3 text-slate-200">${t.customer_name}</td>
+                    <td class="py-3 px-3 text-slate-400 text-xs">${t.created_time}</td>
+                    <td class="py-3 px-3 text-right">
+                        <button onclick="directCallSpecific(${t.id})" class="px-2.5 py-1 bg-indigo-600/30 hover:bg-indigo-600 text-indigo-300 hover:text-white rounded-lg text-xs font-bold transition">
+                            <i class="fa-solid fa-bullhorn mr-1"></i> Call
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Active Table
+        const tbodyActive = document.getElementById('tbody-active');
+        if (data.calling_or_serving.length === 0) {
+            tbodyActive.innerHTML = '<tr><td colspan="5" class="py-8 text-center text-slate-500 font-normal">គ្មានបញ្ជរណាកំពុងបម្រើការទេ</td></tr>';
+        } else {
+            tbodyActive.innerHTML = data.calling_or_serving.map(t => `
+                <tr class="hover:bg-slate-800/40 transition">
+                    <td class="py-3 px-3 font-black text-white">Counter ${t.counter_id}</td>
+                    <td class="py-3 px-3 font-mono font-black text-indigo-400">${t.ticket_number}</td>
+                    <td class="py-3 px-3 text-slate-300">${t.service_name}</td>
+                    <td class="py-3 px-3">
+                        <span class="px-2 py-0.5 rounded-full text-[11px] font-bold ${t.status === 'CALLING' ? 'bg-violet-950 text-violet-300 border border-violet-800' : 'bg-emerald-950 text-emerald-300 border border-emerald-800'}">
+                            ${t.status}
+                        </span>
+                    </td>
+                    <td class="py-3 px-3 text-slate-400 text-xs">${t.called_time || ''}</td>
+                </tr>
+            `).join('');
+        }
+
+        // History Table
+        const tbodyHistory = document.getElementById('tbody-history');
+        if (data.history.length === 0) {
+            tbodyHistory.innerHTML = '<tr><td colspan="5" class="py-8 text-center text-slate-500 font-normal">គ្មានប្រវត្តិថ្ងៃនេះទេ</td></tr>';
+        } else {
+            tbodyHistory.innerHTML = data.history.slice(0, 15).map(t => `
+                <tr class="hover:bg-slate-800/40 transition text-xs">
+                    <td class="py-2.5 px-3 font-mono font-bold text-slate-300">${t.ticket_number}</td>
+                    <td class="py-2.5 px-3 text-slate-400">${t.service_name}</td>
+                    <td class="py-2.5 px-3 text-slate-300">${t.customer_name}</td>
+                    <td class="py-2.5 px-3">
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${t.status === 'COMPLETED' ? 'bg-emerald-950/60 text-emerald-400' : 'bg-rose-950/60 text-rose-400'}">
+                            ${t.status}
+                        </span>
+                    </td>
+                    <td class="py-2.5 px-3 text-slate-500">${t.completed_at ? t.completed_at.substring(11, 16) : '-'}</td>
+                </tr>
+            `).join('');
+        }
+    }
+
+    // Tab buttons
+    document.getElementById('tab-btn-waiting').addEventListener('click', () => switchTab('waiting'));
+    document.getElementById('tab-btn-active').addEventListener('click', () => switchTab('active'));
+    document.getElementById('tab-btn-history').addEventListener('click', () => switchTab('history'));
+
+    function switchTab(tab) {
+        ['waiting', 'active', 'history'].forEach(t => {
+            const btn = document.getElementById(`tab-btn-${t}`);
+            const view = document.getElementById(`view-${t}-table`);
+            if (t === tab) {
+                btn.className = 'text-sm font-black text-indigo-400 border-b-2 border-indigo-500 pb-2 flex items-center space-x-2';
+                view.classList.remove('hidden');
+            } else {
+                btn.className = 'text-sm font-semibold text-slate-400 hover:text-white pb-2 flex items-center space-x-2';
+                view.classList.add('hidden');
+            }
+        });
+    }
+
+    // Action: Call Next
+    document.getElementById('btn-call-next').addEventListener('click', async () => {
+        window.queueSound.initAudio();
+        const serviceFilter = document.getElementById('select-service-filter').value;
+        const formData = new FormData();
+        formData.append('counter_id', activeCounter);
+        if (serviceFilter) formData.append('service_id', serviceFilter);
+
+        const resp = await fetch('/api/staff/call-next', { method: 'POST', body: formData });
+        const data = await resp.json();
+        if (data.status === 'empty') {
+            alert(data.message);
+        } else if (data.status === 'success') {
+            refreshQueueData();
+            window.queueSound.announceTicket(data.ticket.ticket_number, activeCounter);
+        }
+    });
+
+    // Action: Recall
+    document.getElementById('btn-recall').addEventListener('click', async () => {
+        if (!currentStaffTicket) return;
+        window.queueSound.initAudio();
+        const formData = new FormData();
+        formData.append('ticket_id', currentStaffTicket.id);
+        formData.append('counter_id', activeCounter);
+
+        const resp = await fetch('/api/staff/recall', { method: 'POST', body: formData });
+        const data = await resp.json();
+        if (data.status === 'success') {
+            refreshQueueData();
+            window.queueSound.announceTicket(data.ticket.ticket_number, activeCounter);
+        }
+    });
+
+    // Action: Start Serve
+    document.getElementById('btn-serve').addEventListener('click', async () => {
+        if (!currentStaffTicket) return;
+        const formData = new FormData();
+        formData.append('ticket_id', currentStaffTicket.id);
+        const resp = await fetch('/api/staff/serve', { method: 'POST', body: formData });
+        refreshQueueData();
+    });
+
+    // Action: Complete
+    document.getElementById('btn-complete').addEventListener('click', async () => {
+        if (!currentStaffTicket) return;
+        const formData = new FormData();
+        formData.append('ticket_id', currentStaffTicket.id);
+        const resp = await fetch('/api/staff/complete', { method: 'POST', body: formData });
+        refreshQueueData();
+    });
+
+    // Action: Mark No-Show
+    document.getElementById('btn-noshow').addEventListener('click', async () => {
+        if (!currentStaffTicket) return;
+        markNoShow();
+    });
+
+    async function markNoShow() {
+        if (!currentStaffTicket) return;
+        const formData = new FormData();
+        formData.append('ticket_id', currentStaffTicket.id);
+        await fetch('/api/staff/no-show', { method: 'POST', body: formData });
+        refreshQueueData();
+    }
+
+    async function directCallSpecific(ticketId) {
+        window.queueSound.initAudio();
+        const formData = new FormData();
+        formData.append('ticket_id', ticketId);
+        formData.append('counter_id', activeCounter);
+        const resp = await fetch('/api/staff/recall', { method: 'POST', body: formData });
+        const data = await resp.json();
+        if (data.status === 'success') {
+            refreshQueueData();
+            window.queueSound.announceTicket(data.ticket.ticket_number, activeCounter);
+        }
+    }
+
+    // Walk-in form No-Phone Toggle
+    const staffNoPhoneCheck = document.getElementById('staff-walkin-no-phone');
+    const staffPhoneInput = document.getElementById('staff-walkin-phone');
+    const staffPhoneContainer = document.getElementById('staff-walkin-phone-container');
+    const staffPhoneReq = document.getElementById('staff-walkin-phone-req');
+    const staffAutoPrintCheck = document.getElementById('staff-walkin-auto-print');
+
+    staffNoPhoneCheck.addEventListener('change', (e) => {
+        if (e.target.checked) {
+            staffPhoneInput.value = 'Walk-in';
+            staffPhoneInput.disabled = true;
+            staffPhoneContainer.classList.add('opacity-40');
+            staffPhoneReq.innerText = '(Walk-in)';
+            staffAutoPrintCheck.checked = true;
+        } else {
+            staffPhoneInput.value = '';
+            staffPhoneInput.disabled = false;
+            staffPhoneContainer.classList.remove('opacity-40');
+            staffPhoneReq.innerText = '*';
+        }
+    });
+
+    function closeStaffWalkinModal() {
+        document.getElementById('staff-walkin-modal').classList.add('hidden');
+    }
+
+    // Walk-in form submit
+    document.getElementById('form-walkin').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const submitBtn = document.getElementById('btn-staff-walkin-submit');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> កំពុងចេញសំបុត្រ...';
+
+        const isNoPhone = staffNoPhoneCheck.checked;
+        const formData = new FormData(e.target);
+        if (isNoPhone) {
+            formData.set('customer_phone', 'Walk-in');
+            formData.set('no_phone', 'true');
+            formData.set('is_walkin', 'true');
+        }
+
+        try {
+            const resp = await fetch('/api/ticket/generate', { method: 'POST', body: formData });
+            const data = await resp.json();
+
+            if (resp.ok && data.status === 'success') {
+                const t = data.ticket;
+                
+                // Update Staff Modal
+                document.getElementById('staff-modal-number').innerText = t.ticket_number;
+                document.getElementById('staff-modal-customer').innerText = t.customer_name;
+                document.getElementById('staff-modal-service').innerText = t.service_name;
+                document.getElementById('staff-modal-ahead').innerText = `${t.ahead_count || 0} នាក់`;
+                document.getElementById('staff-modal-eta').innerText = `~${t.estimated_wait_minutes || 0} នាទី`;
+
+                // Update Printable Thermal Slip (Clean, NO phone row)
+                document.getElementById('print-ticket-number').innerText = t.ticket_number;
+                document.getElementById('print-customer-name').innerText = t.customer_name;
+                document.getElementById('print-service-name').innerText = t.service_name;
+                document.getElementById('print-ahead-count').innerText = `${t.ahead_count || 0} នាក់`;
+                document.getElementById('print-eta-minutes').innerText = `~${t.estimated_wait_minutes || 0} នាទី`;
+                const staffNow = new Date();
+                document.getElementById('print-date-time').innerText = staffNow.toLocaleString('km-KH');
+                const staffBarcodeEl = document.getElementById('print-barcode-text');
+                if (staffBarcodeEl) {
+                    const dateTag = staffNow.toISOString().slice(0, 10).replace(/-/g, '');
+                    staffBarcodeEl.innerText = `* ${t.ticket_number}-${dateTag} *`;
+                }
+
+                document.getElementById('staff-walkin-modal').classList.remove('hidden');
+
+                if (staffAutoPrintCheck.checked || isNoPhone) {
+                    setTimeout(() => {
+                        window.print();
+                    }, 350);
+                }
+
+                // Reset form inputs (preserve defaults)
+                document.getElementById('staff-walkin-name').value = '';
+                if (!isNoPhone) document.getElementById('staff-walkin-phone').value = '';
+                refreshQueueData();
+            } else {
+                alert(data.detail || data.message || 'បរាជ័យក្នុងការចេញសំបុត្រ');
+            }
+        } catch (err) {
+            alert('Error generating ticket: ' + err.message);
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fa-solid fa-print"></i><span>ចេញសំបុត្រ & បោះពុម្ព / Issue & Print</span>';
+        }
+    });
+
+    // Reset queue (if admin)
+    const btnResetQueue = document.getElementById('btn-reset-queue');
+    if (btnResetQueue) {
+        btnResetQueue.addEventListener('click', async () => {
+            if (confirm('តើអ្នកពិតជាចង់សម្អាតជួរទាំងអស់មែនទេ? (Are you sure you want to reset the queue?)')) {
+                const resp = await fetch('/api/staff/reset-queue', { method: 'POST' });
+                const resData = await resp.json();
+                if (resp.ok) {
+                    refreshQueueData();
+                } else {
+                    alert(resData.detail || 'បរាជ័យក្នុងការ reset ជួរ');
+                }
+            }
+        });
+    }
+
+    // Real-time synchronization
+    window.queueSocket.on('*', () => {
+        refreshQueueData();
+    });
+</script>
+{% endblock %}

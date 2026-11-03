@@ -1,0 +1,498 @@
+{% extends "base.html" %}
+
+{% block title %}LineUp - ស្ថានីយស្កេន និងចេញសំបុត្រ (Queue Kiosk){% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto w-full px-4 py-8 flex-1 flex flex-col justify-center">
+
+    <div class="text-center mb-8">
+        <span class="inline-flex items-center px-4 py-1.5 rounded-full text-xs font-black bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 mb-3">
+            <i class="fa-solid fa-qrcode mr-2"></i> Touchless Virtual Queue Kiosk
+        </span>
+        <h1 class="text-3xl sm:text-4xl font-black text-white tracking-tight">សូមស្កេន QR Code ដើម្បីយកលេខសំបុត្រ</h1>
+        <p class="text-sm text-slate-400 mt-2 max-w-lg mx-auto">Scan the QR code with your smartphone camera to get a digital ticket and receive real-time alerts</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-8 items-center bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-10 shadow-2xl">
+
+        <!-- Left: Big High-Contrast QR Code for Phone Camera Scanning -->
+        <div class="md:col-span-5 flex flex-col items-center text-center">
+            <div class="bg-white p-5 rounded-3xl shadow-2xl border-4 border-indigo-500/30">
+                <img src="/api/qr" alt="Scan to join queue" class="w-56 h-56 object-contain">
+            </div>
+            <div class="mt-4 text-center space-y-1.5">
+                <span class="px-3.5 py-1 rounded-full text-xs font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 inline-block shadow-sm">
+                    📱 ស្កេនបានគ្រប់ទូរស័ព្ទ (All Phones)
+                </span>
+                <p class="text-xs text-slate-200 font-bold mt-1">បើកកាមេរ៉ាទូរស័ព្ទដៃស្កេន ដើម្បីយកលេខរង់ចាំឌីជីថល</p>
+                <p class="text-[11px] text-slate-500">Scan QR Code with Camera to Join Virtual Queue</p>
+            </div>
+        </div>
+
+        <!-- Right: Touch Screen Direct Ticket Generation -->
+        <div class="md:col-span-7 space-y-4">
+            <div class="border-b border-slate-800 pb-3">
+                <h3 class="text-lg font-bold text-white flex items-center space-x-2">
+                    <i class="fa-solid fa-hand-pointer text-indigo-400"></i>
+                    <span>ឬចុចជ្រើសរើសសេវាកម្មនៅលើអេក្រង់ (Touch to Issue)</span>
+                </h3>
+                <p class="text-xs text-slate-400 mt-0.5">សម្រាប់អ្នកដែលមិនមានទូរស័ព្ទ ឬចង់យកសំបុត្រភ្លាមៗ</p>
+            </div>
+
+            <div class="grid grid-cols-1 gap-3">
+                {% for s in services %}
+                <button onclick="openKioskInputModal({{ s.id }}, '{{ s.name }}', '{{ s.prefix }}')" class="flex items-center justify-between p-4 rounded-2xl bg-slate-800/60 hover:bg-indigo-600/20 border border-slate-700/80 hover:border-indigo-500 transition text-left group active:scale-[0.99]">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-12 rounded-xl bg-slate-700 group-hover:bg-indigo-600 flex items-center justify-center font-black text-xl text-white transition shadow-md">
+                            {{ s.prefix }}
+                        </div>
+                        <div>
+                            <span class="font-bold text-sm sm:text-base text-white block">{{ s.name }}</span>
+                            <span class="text-xs text-slate-400">{{ s.description or 'សេវារហ័ស' }} • ~{{ s.avg_service_time }} នាទី/នាក់</span>
+                        </div>
+                    </div>
+                    <div class="w-9 h-9 rounded-xl bg-slate-700/60 group-hover:bg-indigo-500 text-slate-400 group-hover:text-white flex items-center justify-center transition">
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </div>
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<!-- Modal 1: Input Customer Info on Kiosk Screen (Mandatory before issuing ticket) -->
+<div id="kiosk-input-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative animate-fade-in">
+        
+        <!-- Header: Selected Service -->
+        <div class="flex items-center justify-between mb-5 border-b border-slate-800 pb-4">
+            <div class="flex items-center space-x-3">
+                <div id="modal-service-prefix" class="w-12 h-12 rounded-2xl bg-indigo-600 text-white font-black text-xl flex items-center justify-center shadow-lg shadow-indigo-600/40">
+                    A
+                </div>
+                <div>
+                    <span class="text-[10px] uppercase tracking-wider font-extrabold text-indigo-400 block">សេវាកម្មដែលបានជ្រើសរើស</span>
+                    <h3 id="modal-service-name" class="text-base sm:text-lg font-black text-white leading-tight">General Consultation</h3>
+                </div>
+            </div>
+            <button onclick="closeKioskInputModal()" class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+
+        <!-- Alert Error Banner -->
+        <div id="kiosk-input-error" class="hidden mb-4 p-3.5 rounded-2xl bg-rose-950/90 border border-rose-800 text-rose-300 text-xs font-bold flex items-center space-x-2 animate-shake">
+            <i class="fa-solid fa-circle-exclamation text-base flex-shrink-0"></i>
+            <span id="kiosk-input-error-msg">សូមបំពេញព័ត៌មានដែលចាំបាច់ទាំងអស់!</span>
+        </div>
+
+        <form id="kiosk-form" class="space-y-4">
+            <input type="hidden" id="kiosk-service-id" name="service_id" value="">
+
+            <!-- Customer Name Input -->
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                    ឈ្មោះរបស់អ្នក / Your Name <span class="text-rose-500 font-bold">* (ចាំបាច់)</span>
+                </label>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 pointer-events-none">
+                        <i class="fa-solid fa-user text-base"></i>
+                    </span>
+                    <input type="text" id="kiosk-input-name" name="customer_name" required minlength="2" placeholder="ឧ. សុខា / John / Walk-in" class="w-full pl-11 pr-4 py-3.5 rounded-2xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 text-base font-semibold focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/50 transition">
+                </div>
+            </div>
+
+            <!-- Walk-In Checkbox: Guest Has No Phone -->
+            <div class="p-3 bg-slate-800/80 rounded-2xl border border-slate-700/80 transition hover:border-slate-600">
+                <label class="flex items-center space-x-2.5 cursor-pointer">
+                    <input type="checkbox" id="kiosk-checkbox-no-phone" name="no_phone" value="true" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-700 bg-slate-900 cursor-pointer">
+                    <span class="text-xs font-extrabold text-slate-200">
+                        ភ្ញៀវគ្មានទូរស័ព្ទដៃ (Guest has No Phone / Walk-In)
+                    </span>
+                </label>
+                <p class="text-[11px] text-slate-400 pl-6.5 mt-1">
+                    បើជ្រើសរើសជម្រើសនេះ ប្រព័ន្ធនឹងបោះពុម្ពសំបុត្រក្រដាសជូនភ្លាមៗ
+                </p>
+            </div>
+
+            <!-- Customer Phone Input -->
+            <div id="kiosk-phone-container" class="transition-opacity duration-200">
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                    លេខទូរស័ព្ទ / Phone Number <span id="kiosk-phone-required-tag" class="text-rose-500 font-bold">* (ចាំបាច់)</span>
+                </label>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 pointer-events-none">
+                        <i class="fa-solid fa-phone text-base"></i>
+                    </span>
+                    <input type="tel" id="kiosk-input-phone" name="customer_phone" required minlength="8" placeholder="ឧ. 012 345 678" class="w-full pl-11 pr-4 py-3.5 rounded-2xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 text-base font-semibold focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/50 transition">
+                </div>
+                <div id="kiosk-phone-note" class="flex items-center space-x-1.5 text-[11px] text-emerald-400 font-medium mt-1">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <span>សារជូនដំណឹងនឹងផ្ញើទៅកាន់ទូរស័ព្ទនេះ (Direct SMS & TV Display)</span>
+                </div>
+            </div>
+
+            <!-- Print Slip Option Checkbox -->
+            <div class="p-3 bg-indigo-950/40 rounded-2xl border border-indigo-500/30 flex items-center justify-between">
+                <label class="flex items-center space-x-2.5 cursor-pointer flex-1">
+                    <input type="checkbox" id="kiosk-checkbox-auto-print" name="auto_print" checked class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-700 bg-slate-900 cursor-pointer">
+                    <div>
+                        <span class="text-xs font-black text-indigo-200 block">🖨️ បោះពុម្ពសំបុត្រក្រដាស (Print Paper Ticket Slip)</span>
+                        <span class="text-[11px] text-indigo-300/70">បោះពុម្ពសំបុត្រភ្លាមៗសម្រាប់ភ្ញៀវកាន់ក្នុងដៃ</span>
+                    </div>
+                </label>
+            </div>
+
+            <!-- Optional Telegram Option for Kiosk -->
+            <div class="pt-1">
+                <button type="button" onclick="document.getElementById('kiosk-telegram-box').classList.toggle('hidden')" class="text-xs text-slate-400 hover:text-slate-300 font-medium flex items-center space-x-1.5 transition">
+                    <i class="fa-brands fa-telegram text-sky-400"></i>
+                    <span>ជម្រើសបន្ថែម៖ ទទួលសារតាម Telegram ផងដែរ</span>
+                    <i class="fa-solid fa-chevron-down text-[10px] ml-0.5"></i>
+                </button>
+                <div id="kiosk-telegram-box" class="hidden mt-2">
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-sky-400 pointer-events-none">
+                            <i class="fa-brands fa-telegram text-base"></i>
+                        </span>
+                        <input type="text" id="kiosk-input-telegram" name="telegram_chat_id" placeholder="Telegram @Username ឬ Chat ID" class="w-full pl-11 pr-4 py-3 rounded-2xl bg-slate-800/80 border border-slate-700/80 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-sky-500 transition">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex items-center space-x-3 pt-3">
+                <button type="button" onclick="closeKioskInputModal()" class="w-1/3 py-3.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-2xl transition text-sm">
+                    បោះបង់ / Cancel
+                </button>
+                <button type="submit" id="btn-kiosk-submit" class="flex-1 py-3.5 px-4 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-extrabold rounded-2xl shadow-lg shadow-indigo-600/40 transition active:scale-[0.98] text-sm flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-ticket"></i>
+                    <span>ចេញសំបុត្រ / Issue Ticket</span>
+                </button>
+            </div>
+        </form>
+
+    </div>
+</div>
+
+<!-- Modal 2: Issued Ticket Display on Kiosk -->
+<div id="kiosk-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl relative animate-fade-in">
+        <div class="w-20 h-20 rounded-full bg-emerald-500/20 text-emerald-400 border-2 border-emerald-400/50 flex items-center justify-center text-4xl mx-auto mb-4 animate-bounce shadow-xl shadow-emerald-500/20">
+            <i class="fa-solid fa-check"></i>
+        </div>
+        <span class="inline-flex items-center px-3.5 py-1 rounded-full text-xs font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 mb-2">
+            <i class="fa-solid fa-circle-check mr-1.5"></i> បញ្ចេញសំបុត្រជោគជ័យ
+        </span>
+        <div class="text-xs font-bold uppercase tracking-widest text-slate-400 mt-1">លេខសំបុត្ររបស់អ្នក / YOUR TICKET</div>
+        
+        <!-- Big Ticket Number -->
+        <div id="kiosk-modal-number" class="text-6xl font-black font-mono text-white my-3 tracking-tight">
+            A-001
+        </div>
+        
+        <!-- Customer & Service Info -->
+        <div class="p-3.5 bg-slate-800/80 rounded-2xl border border-slate-700 text-left space-y-1.5 my-4 text-xs">
+            <div class="flex justify-between">
+                <span class="text-slate-400">ឈ្មោះ / Name:</span>
+                <span id="kiosk-modal-customer" class="font-bold text-white">Sokha</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-slate-400">សេវាកម្ម / Service:</span>
+                <span id="kiosk-modal-service" class="font-bold text-indigo-400">General Consultation</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-slate-400">អ្នកនៅខាងមុខ / Ahead:</span>
+                <span id="kiosk-modal-ahead" class="font-bold text-amber-400">0 នាក់</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-slate-400">ម៉ោងប៉ាន់ស្មាន / ETA:</span>
+                <span id="kiosk-modal-eta" class="font-bold text-emerald-400">~0 នាទី</span>
+            </div>
+        </div>
+
+        <p class="text-xs text-slate-300 font-medium">សូមរង់ចាំ និងស្តាប់ការកោះហៅនៅលើអេក្រង់ TV</p>
+
+        <div class="mt-6 flex items-center space-x-3">
+            <button type="button" onclick="printKioskTicket()" class="flex-1 py-3.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-2xl border border-slate-700 transition text-sm flex items-center justify-center space-x-2 shadow-md active:scale-95">
+                <i class="fa-solid fa-print text-indigo-400"></i>
+                <span>បោះពុម្ព / Print</span>
+            </button>
+            <button type="button" onclick="closeKioskModal()" id="btn-kiosk-done" class="flex-1 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold rounded-2xl transition shadow-lg shadow-indigo-600/30 text-sm active:scale-95">
+                រួចរាល់ / Done (<span id="kiosk-timer-count">10</span>s)
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ==============================================================================
+     High-End Thermal Receipt Slip (Engineered for 58mm / 80mm POS Printers & A4)
+     ============================================================================== -->
+<div id="printable-ticket-slip" class="hidden">
+    <div class="ticket-slip-card">
+        <!-- Top Header & Brand -->
+        <div class="ticket-slip-header">
+            <div class="ticket-slip-logo">
+                <span class="ticket-brand-icon">❖</span>
+                <span class="ticket-brand-name">LineUp</span>
+            </div>
+            <p class="ticket-subtitle">Smart Virtual Queue System</p>
+            <div class="ticket-divider-dots">• • • • • • • • • • • • • • • • • • • •</div>
+        </div>
+
+        <!-- Meta info: Service & Date -->
+        <div class="ticket-meta-block">
+            <div class="ticket-meta-row">
+                <span class="ticket-meta-label">សេវាកម្ម (Service):</span>
+                <span id="print-service-name" class="ticket-meta-val">General Consultation</span>
+            </div>
+            <div class="ticket-meta-row">
+                <span class="ticket-meta-label">កាលបរិច្ឆេទ (Date/Time):</span>
+                <span id="print-date-time" class="ticket-meta-val">03/11/2026, 10:45 AM</span>
+            </div>
+        </div>
+
+        <!-- Giant Ticket Hero Box -->
+        <div class="ticket-hero-box">
+            <div class="ticket-hero-label">លេខសំបុត្ររបស់អ្នក / YOUR TICKET</div>
+            <div id="print-ticket-number" class="ticket-hero-number">C-001</div>
+            <div class="ticket-hero-badge">សូមរង់ចាំការកោះហៅ</div>
+        </div>
+
+        <!-- Queue Summary Table (Clean, NO phone row) -->
+        <div class="ticket-info-table">
+            <div class="ticket-info-row">
+                <span class="info-label">ឈ្មោះភ្ញៀវ / Name:</span>
+                <span id="print-customer-name" class="info-val">Chea Lida</span>
+            </div>
+            <div class="ticket-info-row">
+                <span class="info-label">អ្នកនៅខាងមុខ / Ahead:</span>
+                <span id="print-ahead-count" class="info-val">0 នាក់</span>
+            </div>
+            <div class="ticket-info-row">
+                <span class="info-label">រង់ចាំប្រហែល / Est. Wait:</span>
+                <span id="print-eta-minutes" class="info-val">~0 នាទី</span>
+            </div>
+        </div>
+
+        <!-- Decorative Simulated Barcode -->
+        <div class="ticket-barcode-wrap">
+            <div class="ticket-barcode-lines">
+                ||| | |||| | ||| || |||| | || ||| ||| | |||
+            </div>
+            <div id="print-barcode-text" class="ticket-barcode-label">* C-001-20261103 *</div>
+        </div>
+
+        <!-- Perforated Tear-Line -->
+        <div class="ticket-tear-line">
+            - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        </div>
+
+        <!-- Footer Notice -->
+        <div class="ticket-footer">
+            <p class="footer-important">★ សូមរង់ចាំ និងស្តាប់ការកោះហៅលើអេក្រង់ TV ★</p>
+            <p class="footer-en">Please watch & listen for your number on the TV Display</p>
+            <p class="footer-thanks">សូមអរគុណ! / THANK YOU</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let kioskTimerInterval = null;
+
+    // Open information input modal when selecting a service on kiosk
+    function openKioskInputModal(serviceId, serviceName, servicePrefix) {
+        window.queueSound.initAudio();
+
+        document.getElementById('kiosk-service-id').value = serviceId;
+        document.getElementById('modal-service-name').innerText = serviceName;
+        document.getElementById('modal-service-prefix').innerText = servicePrefix;
+
+        document.getElementById('kiosk-input-name').value = '';
+        document.getElementById('kiosk-input-phone').value = '';
+        document.getElementById('kiosk-input-telegram').value = '';
+        document.getElementById('kiosk-input-error').classList.add('hidden');
+
+        // Reset No-Phone toggle
+        const noPhoneCheck = document.getElementById('kiosk-checkbox-no-phone');
+        noPhoneCheck.checked = false;
+        toggleKioskNoPhone(false);
+
+        document.getElementById('kiosk-input-modal').classList.remove('hidden');
+
+        setTimeout(() => {
+            document.getElementById('kiosk-input-name').focus();
+        }, 100);
+    }
+
+    function closeKioskInputModal() {
+        document.getElementById('kiosk-input-modal').classList.add('hidden');
+    }
+
+    // Toggle No-Phone (Walk-In) mode
+    const noPhoneCheckbox = document.getElementById('kiosk-checkbox-no-phone');
+    const phoneInput = document.getElementById('kiosk-input-phone');
+    const phoneContainer = document.getElementById('kiosk-phone-container');
+    const phoneReqTag = document.getElementById('kiosk-phone-required-tag');
+    const phoneNote = document.getElementById('kiosk-phone-note');
+    const autoPrintCheck = document.getElementById('kiosk-checkbox-auto-print');
+
+    function toggleKioskNoPhone(isNoPhone) {
+        if (isNoPhone) {
+            phoneInput.value = 'Walk-in';
+            phoneInput.disabled = true;
+            phoneContainer.classList.add('opacity-40');
+            phoneReqTag.innerText = '(មិនចាំបាច់ / Walk-In)';
+            phoneNote.innerHTML = '<i class="fa-solid fa-print text-indigo-400"></i><span>សំបុត្រនឹងបោះពុម្ពចេញផ្ទាល់លើក្រដាស (Print Paper Ticket)</span>';
+            autoPrintCheck.checked = true; // Auto check print option
+        } else {
+            phoneInput.value = '';
+            phoneInput.disabled = false;
+            phoneContainer.classList.remove('opacity-40');
+            phoneReqTag.innerText = '* (ចាំបាច់)';
+            phoneNote.innerHTML = '<i class="fa-solid fa-circle-check"></i><span>សារជូនដំណឹងនឹងផ្ញើទៅកាន់ទូរស័ព្ទនេះ (Direct SMS & TV Display)</span>';
+        }
+    }
+
+    noPhoneCheckbox.addEventListener('change', (e) => {
+        toggleKioskNoPhone(e.target.checked);
+    });
+
+    // Print Thermal Ticket Slip Function
+    function printKioskTicket() {
+        window.print();
+    }
+
+    // Submit kiosk form after entering details
+    document.getElementById('kiosk-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const nameInput = document.getElementById('kiosk-input-name');
+        const phoneInput = document.getElementById('kiosk-input-phone');
+        const isNoPhone = noPhoneCheckbox.checked;
+        const errBanner = document.getElementById('kiosk-input-error');
+        const errMsg = document.getElementById('kiosk-input-error-msg');
+
+        errBanner.classList.add('hidden');
+
+        const nameVal = nameInput.value.trim();
+        const phoneVal = phoneInput.value.trim();
+
+        if (!nameVal) {
+            errBanner.classList.remove('hidden');
+            errMsg.innerText = "សូមបញ្ចូលឈ្មោះរបស់អ្នក! (Customer Name is required)";
+            nameInput.focus();
+            return;
+        }
+
+        if (!isNoPhone) {
+            if (!phoneVal) {
+                errBanner.classList.remove('hidden');
+                errMsg.innerText = "សូមបញ្ចូលលេខទូរស័ព្ទរបស់អ្នក! (Phone Number is required)";
+                phoneInput.focus();
+                return;
+            }
+
+            const phoneDigits = phoneVal.replace(/\D/g, '');
+            if (phoneDigits.length < 8) {
+                errBanner.classList.remove('hidden');
+                errMsg.innerText = "លេខទូរស័ព្ទមិនត្រឹមត្រូវ! ត្រូវមានយ៉ាងតិច ៨ ខ្ទង់ (Min 8 digits required)";
+                phoneInput.focus();
+                return;
+            }
+        }
+
+        const submitBtn = document.getElementById('btn-kiosk-submit');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> កំពុងចេញសំបុត្រ...';
+
+        const formData = new FormData(e.target);
+        if (isNoPhone) {
+            formData.set('customer_phone', 'Walk-in');
+            formData.set('no_phone', 'true');
+            formData.set('is_walkin', 'true');
+        }
+
+        try {
+            const resp = await fetch('/api/ticket/generate', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await resp.json();
+
+            if (resp.ok && data.status === 'success') {
+                closeKioskInputModal();
+                window.queueSound.playDingDong();
+
+                const t = data.ticket;
+                const serviceName = t.service_name || document.getElementById('modal-service-name').innerText;
+                const ahead = t.ahead_count || 0;
+                const eta = t.estimated_wait_minutes || 0;
+
+                // Update On-Screen Modal
+                document.getElementById('kiosk-modal-number').innerText = t.ticket_number;
+                document.getElementById('kiosk-modal-customer').innerText = t.customer_name;
+                document.getElementById('kiosk-modal-service').innerText = serviceName;
+                document.getElementById('kiosk-modal-ahead').innerText = `${ahead} នាក់`;
+                document.getElementById('kiosk-modal-eta').innerText = `~${eta} នាទី`;
+
+                // Update Thermal Receipt Printable Slip (Clean, NO phone row)
+                document.getElementById('print-ticket-number').innerText = t.ticket_number;
+                document.getElementById('print-customer-name').innerText = t.customer_name;
+                document.getElementById('print-service-name').innerText = serviceName;
+                document.getElementById('print-ahead-count').innerText = `${ahead} នាក់`;
+                document.getElementById('print-eta-minutes').innerText = `~${eta} នាទី`;
+                const now = new Date();
+                document.getElementById('print-date-time').innerText = now.toLocaleString('km-KH');
+                const barcodeEl = document.getElementById('print-barcode-text');
+                if (barcodeEl) {
+                    const dateTag = now.toISOString().slice(0, 10).replace(/-/g, '');
+                    barcodeEl.innerText = `* ${t.ticket_number}-${dateTag} *`;
+                }
+
+                document.getElementById('kiosk-modal').classList.remove('hidden');
+
+                // If user selected Auto-Print or is Walk-in without phone, trigger print automatically
+                if (autoPrintCheck.checked || isNoPhone) {
+                    setTimeout(() => {
+                        printKioskTicket();
+                    }, 400);
+                }
+
+                // Countdown auto-close (10 seconds)
+                let countdown = 10;
+                document.getElementById('kiosk-timer-count').innerText = countdown;
+                clearInterval(kioskTimerInterval);
+                kioskTimerInterval = setInterval(() => {
+                    countdown -= 1;
+                    const timerEl = document.getElementById('kiosk-timer-count');
+                    if (timerEl) timerEl.innerText = countdown;
+                    if (countdown <= 0) {
+                        closeKioskModal();
+                    }
+                }, 1000);
+
+            } else {
+                errBanner.classList.remove('hidden');
+                errMsg.innerText = data.detail || (data.message || 'បរាជ័យក្នុងការចេញសំបុត្រ');
+            }
+        } catch (err) {
+            errBanner.classList.remove('hidden');
+            errMsg.innerText = 'Error connecting to server: ' + err.message;
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fa-solid fa-ticket mr-2"></i><span>ចេញសំបុត្រ / Issue Ticket</span>';
+        }
+    });
+
+    function closeKioskModal() {
+        clearInterval(kioskTimerInterval);
+        document.getElementById('kiosk-modal').classList.add('hidden');
+    }
+</script>
+{% endblock %}

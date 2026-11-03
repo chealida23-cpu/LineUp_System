@@ -1,0 +1,377 @@
+{% extends "base.html" %}
+
+{% block title %}LineUp - អេក្រង់បង្ហាញលេខសាធារណៈ (Public TV Display){% endblock %}
+
+{% block content %}
+<div class="flex-1 min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between p-4 sm:p-6 lg:p-8 select-none">
+
+    <!-- Top Header Bar: Modern Broadcast TV Header -->
+    <header class="flex items-center justify-between pb-5 border-b border-slate-800/80">
+        <!-- Logo & System Status -->
+        <div class="flex items-center space-x-4">
+            <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-violet-500 flex items-center justify-center text-white text-2xl shadow-xl shadow-indigo-600/30">
+                <i class="fa-solid fa-users-line"></i>
+            </div>
+            <div>
+                <div class="flex items-center space-x-3">
+                    <h1 class="text-3xl font-black text-white tracking-tight">LineUp</h1>
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 tracking-wide">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping mr-2"></span> LIVE DISPLAY
+                    </span>
+                </div>
+                <p class="text-xs sm:text-sm text-slate-400 font-medium mt-0.5">ប្រព័ន្ធគ្រប់គ្រងជួរឆ្លាតវៃ • Smart Virtual Queue Display</p>
+            </div>
+        </div>
+
+        <!-- Center Notice / Marquee Badge (Clear & Visible) -->
+        <div class="hidden xl:flex items-center space-x-3 px-6 py-2.5 rounded-2xl bg-slate-900/90 border border-slate-800 text-slate-300 text-sm font-semibold shadow-inner">
+            <i class="fa-solid fa-circle-info text-indigo-400 text-base"></i>
+            <span>សូមពិនិត្យលេខសំបុត្រ និងបញ្ជរដែលត្រូវទទួលសេវា • Please proceed to your counter when called</span>
+        </div>
+
+        <!-- Right: Audio, Fullscreen & Digital Clock -->
+        <div class="flex items-center space-x-4">
+            <!-- Audio Toggle & Indicator -->
+            <button id="btn-toggle-sound" class="px-4 py-2.5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-slate-700 text-xs sm:text-sm font-bold flex items-center space-x-2 transition shadow-md active:scale-95">
+                <i id="sound-icon" class="fa-solid fa-volume-high text-emerald-400 text-base"></i>
+                <span id="sound-text" class="hidden sm:inline">សំឡេងបើក (Audio ON)</span>
+            </button>
+
+            <!-- Fullscreen Button -->
+            <button id="btn-fullscreen" class="w-11 h-11 rounded-2xl bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 flex items-center justify-center transition shadow-md active:scale-95" title="Toggle Fullscreen">
+                <i class="fa-solid fa-expand text-base"></i>
+            </button>
+
+            <!-- Live Digital Clock -->
+            <div class="text-right pl-4 border-l border-slate-800">
+                <div id="tv-clock" class="text-2xl sm:text-3xl font-black font-mono tracking-tight text-white leading-none">12:00:00</div>
+                <div id="tv-date" class="text-[11px] sm:text-xs text-slate-400 font-semibold mt-1">ថ្ងៃនេះ</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 my-6 flex-1 items-stretch">
+
+        <!-- Left 8 Columns: Hero Calling Spotlight & Active Counters -->
+        <div class="lg:col-span-8 flex flex-col space-y-6 justify-between">
+
+            <!-- Hero Spotlight Calling Banner (Extra Large for Distance Viewing) -->
+            <div id="tv-hero-box" class="bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/60 border-2 border-indigo-500/50 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden transition-all duration-500">
+                <!-- Ambient background glow effect -->
+                <div class="absolute -right-24 -top-24 w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
+
+                <div class="flex items-center justify-between mb-4">
+                    <span id="hero-status-pill" class="inline-flex items-center px-4 py-1.5 rounded-full text-xs sm:text-sm font-black bg-rose-600 text-white shadow-lg shadow-rose-600/40 animate-pulse">
+                        <i class="fa-solid fa-bullhorn mr-2"></i> កំពុងហៅ / NOW CALLING
+                    </span>
+                    <span id="hero-service-badge" class="px-4 py-1.5 rounded-full text-xs sm:text-sm font-extrabold bg-slate-800/90 text-indigo-300 border border-slate-700">
+                        General Service
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-12 items-center gap-6 py-4">
+                    <!-- Giant Ticket Number -->
+                    <div class="md:col-span-7 text-center md:text-left">
+                        <span class="text-xs sm:text-sm uppercase font-extrabold text-slate-400 tracking-widest block">
+                            លេខសំបុត្រ / TICKET NUMBER
+                        </span>
+                        <div id="hero-ticket-number" class="text-7xl sm:text-8xl md:text-9xl font-black font-mono tracking-tight text-white my-1 leading-none drop-shadow-[0_10px_25px_rgba(99,102,241,0.5)]">
+                            ---
+                        </div>
+                        <div id="hero-customer-name" class="text-base sm:text-lg font-bold text-slate-400 mt-2">
+                            សូមរង់ចាំការកោះហៅ...
+                        </div>
+                    </div>
+
+                    <!-- Counter Destination Callout -->
+                    <div class="md:col-span-5 flex flex-col items-center justify-center p-6 sm:p-8 bg-slate-950/80 rounded-3xl border-2 border-indigo-400/40 text-center shadow-xl">
+                        <span class="text-xs uppercase font-extrabold text-amber-400 tracking-wider block mb-1">
+                            សូមអញ្ជើញទៅកាន់ / PROCEED TO
+                        </span>
+                        <div id="hero-counter-number" class="text-4xl sm:text-5xl font-black text-amber-300 font-mono my-1 tracking-tight drop-shadow-md">
+                            COUNTER -
+                        </div>
+                        <span class="text-xs text-slate-400 font-bold mt-1">បញ្ជរបម្រើសេវា</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Service Counters (Counters 1 to 6) - Clean & High Readability -->
+            <div class="flex-1 flex flex-col justify-end">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-base sm:text-lg font-black text-slate-200 flex items-center space-x-2">
+                        <i class="fa-solid fa-table-cells-large text-indigo-400"></i>
+                        <span>បញ្ជរបម្រើសេវា (Service Counters)</span>
+                    </h2>
+                    <span class="text-xs text-slate-400 font-medium">បង្ហាញស្ថានភាពបញ្ជរនីមួយៗ</span>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    {% for c in range(1, 7) %}
+                    <div id="counter-card-{{ c }}" class="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 transition-all duration-300 shadow-md">
+                        <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+                            <span class="font-black text-sm text-slate-200 tracking-tight">COUNTER {{ c }}</span>
+                            <span id="counter-status-{{ c }}" class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-slate-800 text-slate-500">
+                                ទំនេរ / Idle
+                            </span>
+                        </div>
+                        <div class="pt-3 pb-1 text-center">
+                            <div id="counter-ticket-{{ c }}" class="text-3xl sm:text-4xl font-black text-slate-600 font-mono tracking-wider">
+                                ---
+                            </div>
+                            <div id="counter-desc-{{ c }}" class="text-xs text-slate-400 font-medium truncate mt-1">
+                                Available
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right 4 Columns: Next in Line & Mobile Scan QR -->
+        <div class="lg:col-span-4 flex flex-col space-y-6 justify-between">
+
+            <!-- Next in Line Waiting List -->
+            <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl flex-1 flex flex-col">
+                <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-800">
+                    <div class="flex items-center space-x-2">
+                        <i class="fa-solid fa-clock-rotate-left text-amber-400 text-lg"></i>
+                        <h2 class="text-base sm:text-lg font-black text-white">លេខបន្ទាប់ (Next in Line)</h2>
+                    </div>
+                    <span id="waiting-badge-count" class="px-3 py-1 rounded-full text-xs font-black bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                        0 Waiting
+                    </span>
+                </div>
+
+                <div id="tv-waiting-list" class="space-y-3 flex-1 overflow-y-auto max-h-[360px] pr-1">
+                    <!-- Dynamic Waiting Tickets will be inserted here -->
+                    <div class="text-center py-16 text-slate-500 text-sm font-semibold">
+                        <i class="fa-solid fa-clipboard-check text-2xl text-slate-600 block mb-2"></i>
+                        មិនមានអ្នករង់ចាំទេ (No waiting queue)
+                    </div>
+                </div>
+            </div>
+
+            <!-- Touchless QR Code Card: Clean, Modern, ABSOLUTELY NO RAW URL -->
+            <div class="bg-gradient-to-br from-slate-900 to-indigo-950/40 border border-slate-800 rounded-3xl p-5 shadow-xl text-center">
+                <div class="flex items-center space-x-4">
+                    <div class="bg-white p-2.5 rounded-2xl shadow-lg border-2 border-indigo-500/40 flex-shrink-0">
+                        <img src="/api/qr" alt="Scan QR for Ticket" class="w-24 h-24 object-contain">
+                    </div>
+                    <div class="text-left flex-1 min-w-0">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 mb-1.5">
+                            <i class="fa-solid fa-mobile-screen-button mr-1.5"></i> ស្កេនយកលេខសំបុត្រ
+                        </span>
+                        <h3 class="text-sm font-black text-white tracking-tight leading-tight">
+                            ស្កេនតាមទូរស័ព្ទដៃរបស់អ្នក
+                        </h3>
+                        <p class="text-xs text-slate-300 font-semibold mt-1">មិនបាច់ឈរតម្រង់ជួរ!</p>
+                        <p class="text-[11px] text-slate-400 mt-0.5">បើកកាមេរ៉ាស្កេនដើម្បីទទួលលេខរង់ចាំ & សារដំណឹង</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Bottom Footer Ticker -->
+    <footer class="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-500 font-medium">
+        <div class="flex items-center space-x-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span>LineUp Smart Queue System v2.0 • ដំណើរការ Real-time ដោយស្វ័យប្រវត្តិ</span>
+        </div>
+        <div>
+            <span>ប្រព័ន្ធហៅលេខស្វ័យប្រវត្តិតាមសំឡេង និងទូរស័ព្ទដៃ</span>
+        </div>
+    </footer>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let isSoundMuted = false;
+
+    // Live Clock & Date Update
+    function updateClock() {
+        const now = new Date();
+        const clockEl = document.getElementById('tv-clock');
+        const dateEl = document.getElementById('tv-date');
+        
+        if (clockEl) {
+            clockEl.innerText = now.toLocaleTimeString('en-US', { hour12: false });
+        }
+        if (dateEl) {
+            const options = { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' };
+            dateEl.innerText = now.toLocaleDateString('km-KH', options);
+        }
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Toggle Sound Button
+    const btnSound = document.getElementById('btn-toggle-sound');
+    btnSound.addEventListener('click', () => {
+        window.queueSound.initAudio();
+        isSoundMuted = !isSoundMuted;
+        window.queueSound.muted = isSoundMuted;
+
+        const icon = document.getElementById('sound-icon');
+        const text = document.getElementById('sound-text');
+        if (isSoundMuted) {
+            icon.className = 'fa-solid fa-volume-xmark text-rose-400 text-base';
+            text.innerText = 'សំឡេងបិទ (Audio OFF)';
+        } else {
+            icon.className = 'fa-solid fa-volume-high text-emerald-400 text-base';
+            text.innerText = 'សំឡេងបើក (Audio ON)';
+            window.queueSound.playDingDong();
+        }
+    });
+
+    // Fullscreen Toggle
+    document.getElementById('btn-fullscreen').addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => console.log(err));
+        } else {
+            document.exitFullscreen();
+        }
+    });
+
+    // Fetch initial TV state
+    async function loadTvState() {
+        try {
+            const resp = await fetch('/api/tv/state');
+            const data = await resp.json();
+            renderTvState(data);
+        } catch (e) {
+            console.error('Failed to load TV state', e);
+        }
+    }
+    loadTvState();
+
+    function renderTvState(state) {
+        if (!state) return;
+
+        // 1. Hero Spotlight
+        const heroBox = document.getElementById('tv-hero-box');
+        const heroStatusPill = document.getElementById('hero-status-pill');
+
+        if (state.last_called) {
+            const lc = state.last_called;
+            document.getElementById('hero-ticket-number').innerText = lc.ticket_number;
+            document.getElementById('hero-customer-name').innerText = lc.customer_name ? `ភ្ញៀវ៖ ${lc.customer_name}` : 'សូមត្រៀមខ្លួន';
+            document.getElementById('hero-service-badge').innerText = lc.service_name || 'សេវាកម្ម';
+            document.getElementById('hero-counter-number').innerText = `បញ្ជរ ${lc.counter_id || 1}`;
+
+            if (lc.status === 'CALLING') {
+                heroBox.className = 'bg-gradient-to-br from-indigo-950 via-violet-950 to-indigo-900 border-2 border-indigo-400 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden calling-hero-glow';
+                if (heroStatusPill) {
+                    heroStatusPill.className = 'inline-flex items-center px-4 py-1.5 rounded-full text-xs sm:text-sm font-black bg-rose-600 text-white shadow-lg shadow-rose-600/40 animate-pulse';
+                    heroStatusPill.innerHTML = '<i class="fa-solid fa-bullhorn mr-2"></i> កំពុងហៅ / NOW CALLING';
+                }
+            } else {
+                heroBox.className = 'bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/60 border-2 border-emerald-500/50 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden';
+                if (heroStatusPill) {
+                    heroStatusPill.className = 'inline-flex items-center px-4 py-1.5 rounded-full text-xs sm:text-sm font-black bg-emerald-600 text-white shadow-lg shadow-emerald-600/30';
+                    heroStatusPill.innerHTML = '<i class="fa-solid fa-circle-check mr-2"></i> កំពុងបម្រើសេវា / SERVING';
+                }
+            }
+        } else {
+            document.getElementById('hero-ticket-number').innerText = '---';
+            document.getElementById('hero-customer-name').innerText = 'សូមរង់ចាំការកោះហៅ...';
+            document.getElementById('hero-counter-number').innerText = 'COUNTER -';
+            if (heroStatusPill) {
+                heroStatusPill.className = 'inline-flex items-center px-4 py-1.5 rounded-full text-xs sm:text-sm font-black bg-slate-800 text-slate-400 border border-slate-700';
+                heroStatusPill.innerHTML = '<i class="fa-solid fa-hourglass-start mr-2"></i> រង់ចាំ / STANDBY';
+            }
+        }
+
+        // 2. Counters Grid (Counters 1 to 6)
+        for (let c = 1; c <= 6; c++) {
+            const counterData = state.active_counters[String(c)];
+            const cardEl = document.getElementById(`counter-card-${c}`);
+            const statusEl = document.getElementById(`counter-status-${c}`);
+            const ticketEl = document.getElementById(`counter-ticket-${c}`);
+            const descEl = document.getElementById(`counter-desc-${c}`);
+
+            if (counterData) {
+                ticketEl.innerText = counterData.ticket_number;
+                descEl.innerText = counterData.service_name || 'សេវាកម្ម';
+
+                if (counterData.status === 'CALLING') {
+                    cardEl.className = 'bg-indigo-950/70 border-2 border-indigo-400 rounded-2xl p-4 sm:p-5 transition-all duration-300 shadow-xl shadow-indigo-950/50';
+                    ticketEl.className = 'text-3xl sm:text-4xl font-black text-amber-300 font-mono tracking-wider animate-pulse';
+                    statusEl.className = 'text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-rose-600 text-white animate-pulse';
+                    statusEl.innerText = 'CALLING';
+                } else {
+                    cardEl.className = 'bg-slate-900 border border-emerald-500/50 rounded-2xl p-4 sm:p-5 transition-all duration-300 shadow-lg';
+                    ticketEl.className = 'text-3xl sm:text-4xl font-black text-emerald-400 font-mono tracking-wider';
+                    statusEl.className = 'text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-700/60';
+                    statusEl.innerText = 'SERVING';
+                }
+            } else {
+                ticketEl.innerText = '---';
+                ticketEl.className = 'text-3xl sm:text-4xl font-black text-slate-700 font-mono tracking-wider';
+                descEl.innerText = 'ទំនេរ / Available';
+                cardEl.className = 'bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4 sm:p-5 transition-all duration-300 shadow';
+                statusEl.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-500';
+                statusEl.innerText = 'ទំនេរ / Idle';
+            }
+        }
+
+        // 3. Waiting List
+        const waitingContainer = document.getElementById('tv-waiting-list');
+        const badgeCount = document.getElementById('waiting-badge-count');
+        badgeCount.innerText = `${state.waiting_list.length} Waiting`;
+
+        if (state.waiting_list.length === 0) {
+            waitingContainer.innerHTML = `
+                <div class="text-center py-16 text-slate-500 text-sm font-semibold">
+                    <i class="fa-solid fa-clipboard-check text-2xl text-slate-600 block mb-2"></i>
+                    មិនមានអ្នករង់ចាំទេ (No waiting queue)
+                </div>`;
+        } else {
+            waitingContainer.innerHTML = state.waiting_list.map((t, idx) => `
+                <div class="flex items-center justify-between p-3.5 rounded-2xl bg-slate-800/70 border border-slate-700/60 hover:border-indigo-500/50 transition">
+                    <div class="flex items-center space-x-3.5">
+                        <span class="w-8 h-8 rounded-xl bg-slate-700/80 text-amber-300 flex items-center justify-center font-black text-xs font-mono shadow-inner">
+                            #${idx + 1}
+                        </span>
+                        <div>
+                            <span class="font-mono font-black text-white text-lg tracking-wide">${t.ticket_number}</span>
+                            <span class="text-xs text-slate-400 block">${t.customer_name || 'អតិថិជន'}</span>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-xs font-bold text-indigo-300 block">${t.service_name}</span>
+                        <span class="text-[10px] text-slate-400 font-medium">~${(idx + 1) * 5} នាទី</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+    }
+
+    // WebSocket Real-time Listeners
+    window.queueSocket.on('*', (data) => {
+        if (data.tv_state) {
+            renderTvState(data.tv_state);
+        } else {
+            loadTvState();
+        }
+
+        // Play Announcement Chime & Voice
+        if (data.event === 'TICKET_CALLED' || data.event === 'TICKET_RECALLED') {
+            window.queueSound.announceTicket(data.ticket.ticket_number, data.counter);
+        }
+    });
+
+    // Auto audio unlock on first click anywhere
+    document.addEventListener('click', () => {
+        window.queueSound.initAudio();
+    }, { once: true });
+</script>
+{% endblock %}

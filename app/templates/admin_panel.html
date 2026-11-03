@@ -1,0 +1,596 @@
+{% extends "base.html" %}
+
+{% block title %}LineUp - ផ្ទាំងគ្រប់គ្រងប្រព័ន្ធជាន់ខ្ពស់ (System Admin Panel){% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto w-full px-4 py-8 space-y-8">
+
+    <!-- Admin Header -->
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
+        <div class="flex items-center space-x-4">
+            <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-600 flex items-center justify-center text-white text-2xl shadow-lg shadow-violet-600/30">
+                <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <div>
+                <div class="flex items-center space-x-2">
+                    <h1 class="text-2xl font-black text-white">ផ្ទាំងគ្រប់គ្រងប្រព័ន្ធ (Admin Control)</h1>
+                    <span class="px-2.5 py-0.5 rounded-full text-xs font-black bg-violet-500/20 text-violet-300 border border-violet-500/40">
+                        ADMIN ONLY
+                    </span>
+                </div>
+                <p class="text-xs text-slate-400 mt-0.5">គ្រប់គ្រងសេវាកម្ម បុគ្គលិក និងកំណត់សិទ្ធិប្រព័ន្ធជួរទាំងមូល</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-3">
+            <a href="/staff" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 transition flex items-center space-x-2">
+                <i class="fa-solid fa-headset text-indigo-400"></i>
+                <span>ទៅកាន់ Staff Dashboard</span>
+            </a>
+            <button onclick="adminResetQueue()" class="px-4 py-2 bg-rose-950 hover:bg-rose-900 text-rose-300 text-xs font-bold rounded-xl border border-rose-800 transition flex items-center space-x-2">
+                <i class="fa-solid fa-trash-can"></i>
+                <span>Reset Queue Master</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- 2 Column Layout: Services Management & Staff Account Management -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+        <!-- Column 1: Services & ETA Configuration -->
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-bell-concierge text-indigo-400"></i>
+                    <h2 class="text-base font-extrabold text-white">ប្រភេទសេវាកម្ម & កំណត់ម៉ោង ETA</h2>
+                </div>
+                <span class="text-xs text-slate-400 font-mono">{{ services|length }} Services</span>
+            </div>
+
+            <p class="text-xs text-slate-400">
+                ការកែប្រែ «រយៈពេលបម្រើជាមធ្យម» នឹងធ្វើឱ្យប្រព័ន្ធគណនា Smart ETA លើទូរស័ព្ទរបស់អតិថិជនផ្លាស់ប្តូរដោយស្វ័យប្រវត្តិ។
+            </p>
+
+            <div class="space-y-3">
+                {% for s in services %}
+                <div class="p-4 rounded-2xl bg-slate-800/60 border border-slate-800 flex items-center justify-between gap-3">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-xl bg-slate-700 font-black text-white text-base flex items-center justify-center">
+                            {{ s.prefix }}
+                        </div>
+                        <div>
+                            <span class="font-bold text-sm text-white block">{{ s.name }}</span>
+                            <span class="text-xs text-slate-400 font-mono">Prefix: {{ s.prefix }}</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center space-x-2">
+                        <div class="text-right">
+                            <span class="text-[10px] text-slate-400 uppercase block font-bold">មធ្យម (ETA)</span>
+                            <span class="text-xs font-bold text-emerald-400">{{ s.avg_service_time }} នាទី/នាក់</span>
+                        </div>
+                        <button onclick="promptEditServiceTime({{ s.id }}, '{{ s.name }}', {{ s.avg_service_time }})" class="p-2 bg-slate-700 hover:bg-indigo-600 text-slate-300 hover:text-white rounded-lg text-xs transition" title="កែប្រែម៉ោង ETA">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Column 2: Staff User Management -->
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-users-gear text-violet-400"></i>
+                    <h2 class="text-base font-extrabold text-white">គណនីបុគ្គលិក & សិទ្ធិ (Users & Roles)</h2>
+                </div>
+            </div>
+
+            <!-- List of existing users -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead>
+                        <tr class="text-slate-400 uppercase font-bold border-b border-slate-800">
+                            <th class="py-2.5 px-3">Username</th>
+                            <th class="py-2.5 px-3">Role (សិទ្ធិ)</th>
+                            <th class="py-2.5 px-3">បញ្ជរ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody-users" class="divide-y divide-slate-800/60 font-medium">
+                        {% for u in users %}
+                        <tr class="hover:bg-slate-800/40 transition">
+                            <td class="py-2.5 px-3 font-bold text-white flex items-center space-x-2">
+                                <i class="fa-solid fa-circle-user text-slate-500"></i>
+                                <span>{{ u.username }}</span>
+                            </td>
+                            <td class="py-2.5 px-3">
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-black {% if u.role == 'admin' %}bg-violet-900/60 text-violet-300 border border-violet-700{% else %}bg-indigo-900/60 text-indigo-300 border border-indigo-700{% endif %}">
+                                    {{ u.role|upper }}
+                                </span>
+                            </td>
+                            <td class="py-2.5 px-3 text-slate-300 font-mono">Counter {{ u.counter_number }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Add New Staff Form -->
+            <div class="pt-4 border-t border-slate-800">
+                <h3 class="text-xs font-bold text-slate-300 uppercase mb-3 flex items-center space-x-1.5">
+                    <i class="fa-solid fa-user-plus text-indigo-400"></i>
+                    <span>បង្កើតគណនីថ្មី (Add New User)</span>
+                </h3>
+                <form id="form-create-user" class="grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                        <label class="block text-slate-400 mb-1">Username:</label>
+                        <input type="text" name="username" required placeholder="staff3" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-1">Password:</label>
+                        <input type="password" name="password" required placeholder="••••••••" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-1">Role (សិទ្ធិ):</label>
+                        <select name="role" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-indigo-500">
+                            <option value="staff" selected>Staff (បុគ្គលិកបញ្ជរ)</option>
+                            <option value="admin">Admin (អ្នកគ្រប់គ្រង)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-1">Counter Number:</label>
+                        <input type="number" name="counter_number" value="1" min="1" max="10" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div class="col-span-2">
+                        <button type="submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-plus-circle"></i>
+                            <span>បង្កើតគណនី / Create Account</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Section 3: Telegram Bot Integration & Live Messaging Test -->
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+            <div class="flex items-center space-x-3">
+                <div class="w-12 h-12 rounded-2xl bg-sky-500/20 text-sky-400 flex items-center justify-center text-2xl shadow-lg shadow-sky-500/20">
+                    <i class="fa-brands fa-telegram"></i>
+                </div>
+                <div>
+                    <h2 class="text-lg font-black text-white">ការកំណត់ Telegram Bot ជូនដំណឹង (Telegram Notifications)</h2>
+                    <p class="text-xs text-slate-400">ផ្ញើសារដាស់តឿនស្វ័យប្រវត្តិចូលទូរស័ព្ទដៃរបស់អតិថិជនពេលជិតដល់វេន & ដល់វេន</p>
+                </div>
+            </div>
+
+            <!-- Current Connection Status Badge -->
+            <div id="admin-tg-status-badge" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700 flex items-center space-x-2">
+                <span class="w-2 h-2 rounded-full bg-slate-500"></span>
+                <span>កំពុងត្រួតពិនិត្យស្ថានភាព...</span>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Form 1: Save Bot Token -->
+            <div class="p-5 rounded-2xl bg-slate-800/50 border border-slate-700/60 space-y-3">
+                <h3 class="text-sm font-bold text-white flex items-center space-x-2">
+                    <i class="fa-solid fa-key text-amber-400"></i>
+                    <span>បញ្ចូល Telegram Bot Token</span>
+                </h3>
+                <p class="text-xs text-slate-400">
+                    Bot Token ទទួលបានពី <strong class="text-sky-400">@BotFather</strong> ក្នុងកម្មវិធី Telegram។
+                </p>
+
+                <form id="form-telegram-token" class="space-y-3">
+                    <div>
+                        <input type="text" id="input-bot-token" required placeholder="ឧ. 123456789:ABCdefGHIjklMNOpqrsTUVwxyz" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white placeholder-slate-500 font-mono text-xs focus:outline-none focus:border-sky-500 transition">
+                    </div>
+                    <button type="submit" id="btn-save-token" class="w-full py-2.5 px-4 bg-sky-600 hover:bg-sky-500 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-sky-600/30 transition flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        <span>រក្សាទុក Bot Token / Save</span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Form 2: Test Message to Chat ID -->
+            <div class="p-5 rounded-2xl bg-slate-800/50 border border-slate-700/60 space-y-3">
+                <h3 class="text-sm font-bold text-white flex items-center space-x-2">
+                    <i class="fa-solid fa-paper-plane text-emerald-400"></i>
+                    <span>សាកល្បងផ្ញើសារតេស្ត (Test Telegram Message)</span>
+                </h3>
+                <p class="text-xs text-slate-400">
+                    បញ្ចូលលេខ Chat ID របស់អ្នកដើម្បីធ្វើតេស្តផ្ញើសារភ្លាមៗ។
+                </p>
+
+                <form id="form-telegram-test" class="space-y-3">
+                    <div>
+                        <input type="text" id="input-test-chat-id" required placeholder="ឧ. 123456789 (Telegram Chat ID របស់អ្នក)" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white placeholder-slate-500 font-mono text-xs focus:outline-none focus:border-emerald-500 transition">
+                    </div>
+                    <button type="submit" id="btn-send-test" class="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-emerald-600/30 transition flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-paper-plane"></i>
+                        <span>ផ្ញើសារតេស្ត / Send Test</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- How to Create Bot Guide -->
+        <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800 text-xs text-slate-300 space-y-2">
+            <span class="font-bold text-sky-400 block">📖 របៀបបង្កើត Telegram Bot ក្នុងរយៈពេល ១ នាទី៖</span>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-[11px] text-slate-400">
+                <div class="p-3 rounded-xl bg-slate-900 border border-slate-800">
+                    <strong class="text-white block mb-1">ជំហានទី ១៖ បង្កើត Bot</strong>
+                    ចូល Telegram ស្វែងរក <strong class="text-sky-300">@BotFather</strong> រួចចុច Start ហើយផ្ញើពាក្យ <code class="text-amber-300 font-mono">/newbot</code>។
+                </div>
+                <div class="p-3 rounded-xl bg-slate-900 border border-slate-800">
+                    <strong class="text-white block mb-1">ជំហានទី ២៖ យក Token</strong>
+                    ដាក់ឈ្មោះ Bot (ឧ. <code class="text-amber-300 font-mono">MyQueueBot</code>) វានឹងផ្តល់ជូន Bot Token មួយខ្សែកូដវែង។
+                </div>
+                <div class="p-3 rounded-xl bg-slate-900 border border-slate-800">
+                    <strong class="text-white block mb-1">ជំហានទី ៣៖ ភ្ជាប់ប្រព័ន្ធ</strong>
+                    ចម្លង Token នោះមកដាក់ក្នុងប្រអប់ខាងលើ ហើយចុចរក្សាទុក។ រួចចូលទៅកាន់ Bot របស់អ្នកចុច <code class="text-amber-300 font-mono">/start</code> ជាការស្រេច!
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Section 4: Direct SMS Gateway Configuration (No Telegram needed for customers!) -->
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+            <div class="flex items-center space-x-3">
+                <div class="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-2xl shadow-lg shadow-emerald-500/20">
+                    <i class="fa-solid fa-comment-sms"></i>
+                </div>
+                <div>
+                    <h2 class="text-lg font-black text-white">ប្រព័ន្ធផ្ញើសារ SMS ផ្ទាល់ទៅលេខទូរស័ព្ទ (Direct Phone SMS Gateway)</h2>
+                    <p class="text-xs text-slate-400">ភ្ញៀវមិនបាច់មាន Telegram, មិនបាច់មាន App - សារលោតចូល Messages លើទូរស័ព្ទដោយផ្ទាល់</p>
+                </div>
+            </div>
+
+            <!-- Current SMS Status Badge -->
+            <div id="admin-sms-status-badge" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700 flex items-center space-x-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span id="admin-sms-status-text">SMS Mode: Demo Simulation</span>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Form 1: SMS Gateway Provider Configuration -->
+            <div class="p-5 rounded-2xl bg-slate-800/50 border border-slate-700/60 space-y-4">
+                <h3 class="text-sm font-bold text-white flex items-center space-x-2">
+                    <i class="fa-solid fa-sliders text-indigo-400"></i>
+                    <span>ជ្រើសរើសប្រភេទ SMS Gateway</span>
+                </h3>
+
+                <form id="form-sms-config" class="space-y-3">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-300 uppercase mb-1">SMS Provider</label>
+                        <select id="sms-provider-select" name="provider" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-indigo-500 transition">
+                            <option value="mock">📱 Demo Simulation Mode (ឥតគិតថ្លៃ / Free Demo)</option>
+                            <option value="twilio">🌐 Twilio SMS API</option>
+                            <option value="generic">🇰🇭 Custom / Plasgate / Cambodia Gateway</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-300 uppercase mb-1">ឈ្មោះអ្នកផ្ញើ / Sender Name</label>
+                        <input type="text" id="sms-sender-name" name="sender_name" value="LineUp" placeholder="ឧ. LineUp ឬ ClinicName" class="w-full px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs">
+                    </div>
+
+                    <!-- Twilio fields (toggled) -->
+                    <div id="twilio-fields" class="hidden space-y-2 pt-1 border-t border-slate-700/60">
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-400 uppercase">Twilio Account SID</label>
+                            <input type="text" name="twilio_sid" id="twilio-sid" placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs font-mono">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-400 uppercase">Twilio Auth Token</label>
+                            <input type="password" name="twilio_token" id="twilio-token" placeholder="Auth Token" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs font-mono">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-400 uppercase">Twilio From Phone Number</label>
+                            <input type="text" name="twilio_from" id="twilio-from" placeholder="+1234567890" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs font-mono">
+                        </div>
+                    </div>
+
+                    <!-- Generic / Plasgate Gateway fields (toggled) -->
+                    <div id="generic-fields" class="hidden space-y-2 pt-1 border-t border-slate-700/60">
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-400 uppercase">SMS Gateway API URL (Plasgate / Custom)</label>
+                            <input type="url" name="gateway_url" id="gateway-url" placeholder="https://gateway.plasgate.com/api/send-sms" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs font-mono">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-400 uppercase">API Key / Token</label>
+                            <input type="password" name="gateway_key" id="gateway-key" placeholder="Bearer Token ឬ API Secret" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs font-mono">
+                        </div>
+                    </div>
+
+                    <button type="submit" id="btn-save-sms" class="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg transition flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        <span>រក្សាទុកការកំណត់ SMS / Save Settings</span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Form 2: Test SMS Sender -->
+            <div class="p-5 rounded-2xl bg-slate-800/50 border border-slate-700/60 space-y-4">
+                <h3 class="text-sm font-bold text-white flex items-center space-x-2">
+                    <i class="fa-solid fa-mobile-screen-button text-emerald-400"></i>
+                    <span>សាកល្បងផ្ញើសារ SMS (Test SMS)</span>
+                </h3>
+                <p class="text-xs text-slate-400">
+                    បញ្ចូលលេខទូរស័ព្ទរបស់អតិថិជនដើម្បីផ្ញើសារ SMS តេស្តផ្ទាល់ភ្លាមៗ។
+                </p>
+
+                <form id="form-sms-test" class="space-y-3">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-300 uppercase mb-1">លេខទូរស័ព្ទ / Phone Number</label>
+                        <input type="tel" id="sms-test-phone" required placeholder="ឧ. 012 345 678" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white placeholder-slate-500 font-mono text-xs focus:outline-none focus:border-emerald-500 transition">
+                    </div>
+                    <button type="submit" id="btn-send-sms-test" class="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-emerald-600/30 transition flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-paper-plane"></i>
+                        <span>ផ្ញើសារ SMS តេស្ត / Send Test SMS</span>
+                    </button>
+                </form>
+
+                <div id="sms-test-result" class="hidden p-3 rounded-xl bg-slate-950 border border-slate-800 text-[11px] space-y-1 font-mono">
+                    <span class="text-emerald-400 font-bold block">លទ្ធផលតេស្ត / Result:</span>
+                    <p id="sms-test-msg" class="text-slate-300"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    async function promptEditServiceTime(serviceId, serviceName, currentMinutes) {
+        const newTime = prompt(`បញ្ចូលរយៈពេលបម្រើជាមធ្យមថ្មី (នាទី) សម្រាប់ «${serviceName}»:\n(New average minutes for ETA)`, currentMinutes);
+        if (newTime !== null && newTime.trim() !== "") {
+            const minutes = parseInt(newTime);
+            if (isNaN(minutes) || minutes < 1) {
+                alert("សូមបញ្ចូលចំនួនលេខវិជ្ជមាន (Enter valid minutes)");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("service_id", serviceId);
+            formData.append("avg_service_time", minutes);
+
+            const resp = await fetch("/api/admin/services/update", {
+                method: "POST",
+                body: formData
+            });
+            const data = await resp.json();
+            if (resp.ok && data.status === "success") {
+                alert("កែប្រែដោយជោគជ័យ! (Updated successfully)");
+                location.reload();
+            } else {
+                alert(data.detail || "បរាជ័យក្នុងការកែប្រែ");
+            }
+        }
+    }
+
+    document.getElementById("form-create-user").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+
+        try {
+            const resp = await fetch("/api/admin/users/create", {
+                method: "POST",
+                body: formData
+            });
+            const data = await resp.json();
+            if (resp.ok && data.status === "success") {
+                alert("បានបង្កើតគណនីជោគជ័យ! (User created successfully)");
+                location.reload();
+            } else {
+                alert(data.detail || "បរាជ័យក្នុងការបង្កើតគណនី");
+            }
+        } catch (err) {
+            alert("Error: " + err.message);
+        }
+    });
+
+    // Load Telegram Bot status
+    async function loadTelegramStatus() {
+        try {
+            const resp = await fetch("/api/telegram/status");
+            const data = await resp.json();
+            const badge = document.getElementById("admin-tg-status-badge");
+            if (data.configured && data.valid) {
+                badge.className = "px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center space-x-2";
+                badge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span><span>បានភ្ជាប់៖ @${data.bot_username || 'Bot'} (${data.bot_name || 'Active'})</span>`;
+            } else if (data.configured && !data.valid) {
+                badge.className = "px-3.5 py-1.5 rounded-xl text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center space-x-2";
+                badge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span><span>Token មិនត្រឹមត្រូវ (${data.error || 'Invalid'})</span>`;
+            } else {
+                badge.className = "px-3.5 py-1.5 rounded-xl text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center space-x-2";
+                badge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span><span>មិនទាន់កំណត់ Token នៅឡើយ (Not Configured)</span>`;
+            }
+        } catch (e) {
+            console.error("Failed to load Telegram status", e);
+        }
+    }
+    loadTelegramStatus();
+
+    // Save Telegram Token
+    document.getElementById("form-telegram-token").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const tokenInput = document.getElementById("input-bot-token");
+        const btn = document.getElementById("btn-save-token");
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> កំពុងរក្សាទុក...';
+
+        const formData = new FormData();
+        formData.append("bot_token", tokenInput.value.trim());
+
+        try {
+            const resp = await fetch("/api/admin/telegram/config", {
+                method: "POST",
+                body: formData
+            });
+            const data = await resp.json();
+            if (resp.ok && data.status === "success") {
+                if (data.info && data.info.valid) {
+                    alert(`✅ ភ្ជាប់ជោគជ័យជាមួយ Telegram Bot: @${data.info.bot_username}!`);
+                } else {
+                    alert(`⚠️ បានរក្សាទុក ប៉ុន្តែ Telegram រាយការណ៍ថា: ${data.info.error || 'Token មិនត្រឹមត្រូវ'}`);
+                }
+                loadTelegramStatus();
+            } else {
+                alert(data.detail || "បរាជ័យក្នុងការរក្សាទុក");
+            }
+        } catch (err) {
+            alert("Error: " + err.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-floppy-disk mr-1"></i> រក្សាទុក Bot Token / Save';
+        }
+    });
+
+    // Send Test Message
+    document.getElementById("form-telegram-test").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const chatIdInput = document.getElementById("input-test-chat-id");
+        const btn = document.getElementById("btn-send-test");
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> កំពុងផ្ញើ...';
+
+        const formData = new FormData();
+        formData.append("chat_id", chatIdInput.value.trim());
+
+        try {
+            const resp = await fetch("/api/admin/telegram/test", {
+                method: "POST",
+                body: formData
+            });
+            const data = await resp.json();
+            if (data.status === "success") {
+                alert("🎉 " + data.message);
+            } else {
+                alert("❌ " + data.message);
+            }
+        } catch (err) {
+            alert("Error: " + err.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-paper-plane mr-1"></i> ផ្ញើសារតេស្ត / Send Test';
+        }
+    });
+
+    // Toggle SMS Provider Form Fields
+    const smsSelect = document.getElementById("sms-provider-select");
+    const twilioFields = document.getElementById("twilio-fields");
+    const genericFields = document.getElementById("generic-fields");
+
+    function updateSMSProviderFields() {
+        const val = smsSelect.value;
+        if (twilioFields) twilioFields.classList.toggle("hidden", val !== "twilio");
+        if (genericFields) genericFields.classList.toggle("hidden", val !== "generic");
+    }
+    if (smsSelect) {
+        smsSelect.addEventListener("change", updateSMSProviderFields);
+    }
+
+    // Load SMS Status
+    async function loadSMSStatus() {
+        try {
+            const resp = await fetch("/api/admin/sms/status");
+            const data = await resp.json();
+            const badge = document.getElementById("admin-sms-status-text");
+            if (badge) {
+                if (data.provider === "twilio") {
+                    badge.innerText = "SMS: Twilio API " + (data.twilio_configured ? "(Active)" : "(Need Keys)");
+                } else if (data.provider === "generic") {
+                    badge.innerText = "SMS: Custom/Plasgate Gateway " + (data.generic_configured ? "(Active)" : "(Need URL)");
+                } else {
+                    badge.innerText = "SMS: Demo Simulation (Ready)";
+                }
+            }
+        } catch (e) {}
+    }
+    loadSMSStatus();
+
+    // Save SMS Config
+    document.getElementById("form-sms-config").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById("btn-save-sms");
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> កំពុងរក្សាទុក...';
+
+        const formData = new FormData(e.target);
+        try {
+            const resp = await fetch("/api/admin/sms/config", {
+                method: "POST",
+                body: formData
+            });
+            const data = await resp.json();
+            if (resp.ok) {
+                alert("✅ " + data.message);
+                loadSMSStatus();
+            } else {
+                alert("❌ បរាជ័យក្នុងការរក្សាទុក");
+            }
+        } catch (err) {
+            alert("Error: " + err.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-floppy-disk mr-1"></i> រក្សាទុកការកំណត់ SMS / Save Settings';
+        }
+    });
+
+    // Send Test SMS
+    document.getElementById("form-sms-test").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById("btn-send-sms-test");
+        const phoneInput = document.getElementById("sms-test-phone");
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> កំពុងផ្ញើ...';
+
+        const formData = new FormData();
+        formData.append("phone", phoneInput.value.trim());
+
+        try {
+            const resp = await fetch("/api/admin/sms/test", {
+                method: "POST",
+                body: formData
+            });
+            const data = await resp.json();
+            const resBox = document.getElementById("sms-test-result");
+            const resMsg = document.getElementById("sms-test-msg");
+            if (resBox) resBox.classList.remove("hidden");
+            if (data.success) {
+                resMsg.innerHTML = `<span class="text-emerald-400 font-bold">ជោគជ័យ!</span><br>Provider: ${data.provider}<br>To: ${data.formatted_phone || phoneInput.value}<br>Notice: ${data.notice || 'Delivered'}`;
+            } else {
+                resMsg.innerHTML = `<span class="text-rose-400 font-bold">បរាជ័យ:</span> ${data.error || 'Unknown error'}`;
+            }
+        } catch (err) {
+            alert("Error: " + err.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-paper-plane mr-1"></i> ផ្ញើសារ SMS តេស្ត / Send Test SMS';
+        }
+    });
+
+    async function adminResetQueue() {
+        if (confirm("⚠️ ការព្រមាន: តើអ្នកពិតជាចង់សម្អាតទិន្នន័យជួរទាំងអស់មែនទេ? (Are you sure you want to reset the queue?)")) {
+            const resp = await fetch("/api/staff/reset-queue", { method: "POST" });
+            const data = await resp.json();
+            if (resp.ok) {
+                alert("ជួរត្រូវបានសម្អាតដោយជោគជ័យ (Queue Reset Complete)");
+                location.reload();
+            } else {
+                alert(data.detail || "បរាជ័យក្នុងការ Reset");
+            }
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,347 @@
+/* LineUp System - Custom Styling */
+@import url('https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+    --font-sans: 'Plus Jakarta Sans', 'Kantumruy Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+body {
+    font-family: var(--font-sans);
+    background-color: #0f172a;
+    color: #f8fafc;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: #1e293b;
+}
+::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+}
+
+/* Animations */
+@keyframes pulse-ring {
+    0% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 15px rgba(16, 185, 129, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    }
+}
+
+@keyframes call-flash {
+    0%, 100% {
+        background-color: #1e1b4b;
+        border-color: #6366f1;
+    }
+    50% {
+        background-color: #312e81;
+        border-color: #a855f7;
+        box-shadow: 0 0 25px rgba(168, 85, 247, 0.5);
+    }
+}
+
+.calling-hero-glow {
+    animation: call-flash 1.2s infinite;
+}
+
+.ring-indicator {
+    animation: pulse-ring 2s infinite;
+}
+
+/* Ticket Receipt Cut-line */
+.ticket-cutout {
+    position: relative;
+    background: #ffffff;
+    color: #0f172a;
+    border-radius: 1.25rem;
+}
+
+.ticket-cutout::before, .ticket-cutout::after {
+    content: '';
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    background-color: #0f172a;
+    border-radius: 50%;
+    top: 55%;
+    transform: translateY(-50%);
+}
+
+.ticket-cutout::before {
+    left: -12px;
+}
+
+.ticket-cutout::after {
+    right: -12px;
+}
+
+.ticket-dashed-line {
+    border-top: 2px dashed #cbd5e1;
+    margin: 1rem 0;
+}
+
+/* Badge colors */
+.badge-blue { background-color: #1e3a8a; color: #93c5fd; border: 1px solid #2563eb; }
+.badge-emerald { background-color: #064e3b; color: #6ee7b7; border: 1px solid #059669; }
+.badge-purple { background-color: #3b0764; color: #d8b4fe; border: 1px solid #7c3aed; }
+.badge-amber { background-color: #451a03; color: #fcd34d; border: 1px solid #d97706; }
+
+/* ==============================================================================
+   Print Stylesheet: POS Thermal Queue Receipt (58mm / 80mm / Standard Paper)
+   ============================================================================== */
+@media print {
+    /* Hide everything on page by default */
+    html, body {
+        background: #ffffff !important;
+        color: #000000 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        font-family: 'Kantumruy Pro', 'Plus Jakarta Sans', -apple-system, sans-serif !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    body * {
+        visibility: hidden !important;
+    }
+
+    /* Only show the dedicated printable ticket element */
+    #printable-ticket-slip, #printable-ticket-slip * {
+        visibility: visible !important;
+    }
+
+    #printable-ticket-slip {
+        display: block !important;
+        position: fixed !important;
+        left: 50% !important;
+        top: 0 !important;
+        transform: translateX(-50%) !important;
+        width: 78mm !important; /* Standard 80mm / 3-inch POS printer width */
+        max-width: 100% !important;
+        margin: 0 auto !important;
+        padding: 6mm 4mm !important;
+        background: #ffffff !important;
+        color: #000000 !important;
+        box-shadow: none !important;
+        border: none !important;
+        text-align: center !important;
+    }
+
+    .ticket-slip-card {
+        border: 2px solid #000000;
+        border-radius: 14px;
+        padding: 16px 14px;
+        background: #ffffff;
+        text-align: center;
+        box-sizing: border-box;
+    }
+
+    .ticket-slip-header {
+        margin-bottom: 10px;
+    }
+
+    .ticket-slip-logo {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+    }
+
+    .ticket-brand-icon {
+        font-size: 16px;
+        font-weight: 900;
+    }
+
+    .ticket-brand-name {
+        font-size: 20px;
+        font-weight: 900;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        color: #000000;
+    }
+
+    .ticket-subtitle {
+        font-size: 8.5px;
+        font-weight: 800;
+        letter-spacing: 1.5px;
+        color: #333333;
+        margin: 2px 0 0 0;
+        text-transform: uppercase;
+    }
+
+    .ticket-divider-dots {
+        letter-spacing: 3px;
+        font-size: 10px;
+        color: #555555;
+        margin: 6px 0;
+    }
+
+    .ticket-meta-block {
+        text-align: left;
+        font-size: 11px;
+        line-height: 1.5;
+        border-bottom: 1.5px dashed #000000;
+        padding-bottom: 8px;
+        margin-bottom: 10px;
+    }
+
+    .ticket-meta-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 3px;
+    }
+
+    .ticket-meta-label {
+        font-weight: 700;
+        color: #333333;
+    }
+
+    .ticket-meta-val {
+        font-weight: 800;
+        color: #000000;
+        text-align: right;
+    }
+
+    .ticket-hero-box {
+        border: 2.5px solid #000000;
+        border-radius: 12px;
+        padding: 10px 6px;
+        margin: 10px 0;
+        background: #f8fafc !important;
+        text-align: center;
+    }
+
+    .ticket-hero-label {
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: #222222;
+    }
+
+    .ticket-hero-number {
+        font-size: 54px;
+        font-weight: 900;
+        font-family: 'Plus Jakarta Sans', monospace, sans-serif;
+        letter-spacing: 3px;
+        line-height: 1.05;
+        margin: 4px 0;
+        color: #000000;
+    }
+
+    .ticket-hero-badge {
+        display: inline-block;
+        font-size: 10px;
+        font-weight: 800;
+        background: #000000 !important;
+        color: #ffffff !important;
+        padding: 2px 10px;
+        border-radius: 20px;
+        letter-spacing: 0.5px;
+    }
+
+    .ticket-info-table {
+        text-align: left;
+        font-size: 12px;
+        line-height: 1.6;
+        margin: 10px 0;
+        border-bottom: 1.5px dashed #000000;
+        padding-bottom: 8px;
+    }
+
+    .ticket-info-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 4px;
+    }
+
+    .info-label {
+        color: #444444;
+        font-weight: 600;
+    }
+
+    .info-val {
+        font-weight: 800;
+        color: #000000;
+    }
+
+    .ticket-barcode-wrap {
+        margin: 8px 0 4px 0;
+        text-align: center;
+    }
+
+    .ticket-barcode-lines {
+        font-family: monospace;
+        font-size: 18px;
+        font-weight: 900;
+        letter-spacing: 1.5px;
+        line-height: 1;
+        color: #000000;
+    }
+
+    .ticket-barcode-label {
+        font-family: monospace;
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 2px;
+        color: #444444;
+        margin-top: 3px;
+    }
+
+    .ticket-tear-line {
+        font-size: 10px;
+        letter-spacing: 2px;
+        color: #666666;
+        margin: 6px 0;
+    }
+
+    .ticket-footer {
+        font-size: 10.5px;
+        line-height: 1.4;
+        color: #222222;
+    }
+
+    .footer-important {
+        font-weight: 800;
+        font-size: 11px;
+        margin: 2px 0;
+        color: #000000;
+    }
+
+    .footer-en {
+        color: #555555;
+        font-size: 9px;
+        margin: 2px 0 4px 0;
+    }
+
+    .footer-thanks {
+        font-weight: 900;
+        font-size: 12px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        margin: 4px 0 0 0;
+        color: #000000;
+    }
+
+    .no-print {
+        display: none !important;
+    }
+
+    @page {
+        size: auto;
+        margin: 2mm;
+    }
+}
